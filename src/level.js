@@ -1,6 +1,8 @@
+/* global module */
 /**
- * Level Manager - handles level loading, switching, and state
+ * LevelManager class - handles level data, tilemaps, and progression
  */
+// eslint-disable-next-line no-unused-vars
 class LevelManager {
     constructor() {
         this.levels = [];
@@ -8,16 +10,8 @@ class LevelManager {
         this.completedLevels = [];
     }
     
-    async loadLevels(url) {
-        try {
-            const response = await fetch(url);
-            const data = await response.json();
-            this.levels = data.levels || data;
-            return true;
-        } catch (error) {
-            console.error('Failed to load levels:', error);
-            return false;
-        }
+    loadLevels(levels) {
+        this.levels = levels;
     }
     
     getCurrentLevel() {
@@ -30,17 +24,12 @@ class LevelManager {
             this.currentLevelIndex++;
             return true;
         }
-        return false; // Game complete
+        return false;
     }
     
-    restartLevel() {
-        // Reset to beginning of current level
-        return true;
-    }
-    
-    goToLevel(index) {
-        if (index >= 0 && index < this.levels.length) {
-            this.currentLevelIndex = index;
+    completeLevel(levelIndex = this.currentLevelIndex) {
+        if (this.completedLevels.indexOf(levelIndex) === -1) {
+            this.completedLevels.push(levelIndex);
             return true;
         }
         return false;
@@ -58,3 +47,5 @@ class LevelManager {
         };
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = LevelManager; }
