@@ -27,15 +27,14 @@ describe('Player Class', () => {
     test('Player Movement', () => {
         const player = new Player(100, 50, null);
         player.moveLeft();
-        expect(player.velocityX).toBeLessThaŠ
--3);
+        expect(player.velocityX).toBeLessThan(-3);
 
         player = new Player(100, 50, null);
         player.moveRight();
         expect(player.velocityX).toBeGreaterThan(0);
     });
 
-    test('Player Joump), () => {
+    test('Player Jump', () => {
         const player = new Player(100, 50, null);
         player.jump();
         expect(player.velocityY).toBeLessThan(0);
@@ -59,4 +58,8 @@ describe('Enemy Class', () => {
 
     test('Enemy Patrol', () => {
         const enemy = new Enemy(100, 30, 'goomba', null);
-        const initialX = enemy.x
+        const initialX = enemy.x;
+        enemy.patrol();
+        expect(enemy.x).not.toBe(initialX);
+    });
+});
