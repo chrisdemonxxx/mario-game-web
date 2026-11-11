@@ -41,7 +41,7 @@ function findLatestCommentWithPattern(comments, pattern) {
     if (!Array.isArray(comments)) {
         return null;
     }
-    
+
     // Search from end to start to find most recent
     for (let i = comments.length - 1; i >= 0; i--) {
         if (comments[i].body && comments[i].body.includes(pattern)) {
@@ -56,19 +56,19 @@ function findLatestCommentWithPattern(comments, pattern) {
  * @param {string} currentHeadSha - The current PR head SHA
  * @param {Array} comments - PR comments
  * @param {string} statusPattern - Pattern like "QA: PASSED" or "REVIEW: APPROVED"
- * @returns {boolean} - True if labels should be removed (SHA mismatch)
+ * @returns {boolean} - True if labels should be removed (SHA mismatch or no previous comment)
  */
 function shouldRemoveLabelsForSha(currentHeadSha, comments, statusPattern) {
     const latestComment = findLatestCommentWithPattern(comments, statusPattern);
     if (!latestComment) {
-        return false; // No previous status comment, so no mismatch
+        return true; // No previous status comment, labels are stale
     }
-    
+
     const approvedSha = extractShaFromComment(latestComment.body, statusPattern);
     if (!approvedSha) {
-        return false; // Couldn't extract SHA from old comment
+        return true; // Couldn't extract SHA from old comment, labels are stale
     }
-    
+
     return !compareShas(currentHeadSha, approvedSha);
 }
 
@@ -81,10 +81,10 @@ function shouldRemoveLabelsForSha(currentHeadSha, comments, statusPattern) {
 function getQaLabelsToRemove(currentLabels) {
     const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
     const toRemove = [];
-    
+
     if (labelNames.includes('qa-passed')) toRemove.push('qa-passed');
     if (labelNames.includes('qa-failed')) toRemove.push('qa-failed');
-    
+
     return toRemove;
 }
 
@@ -97,10 +97,10 @@ function getQaLabelsToRemove(currentLabels) {
 function getReviewerLabelsToRemove(currentLabels) {
     const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
     const toRemove = [];
-    
+
     if (labelNames.includes('approved')) toRemove.push('approved');
     if (labelNames.includes('changes-requested')) toRemove.push('changes-requested');
-    
+
     return toRemove;
 }
 
