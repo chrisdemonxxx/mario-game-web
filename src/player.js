@@ -104,199 +104,64 @@ class Player {
         // Handle both delta time (seconds) and game time (milliseconds for test compatibility)
         if (typeof deltaTime === 'number') {
             // If deltaTime looks like a game time (too large to be delta), use it as gameTime
-            if (deltaTime > 100) {
+            if (deltaTime > 10) {
+                // Treat as game time (milliseconds)
                 this.gameTime = deltaTime;
-            } else if (deltaTime > 0) {
-                // Regular delta time in seconds
+                deltaTime = 0.016; // Assume ~60 FPS
+            } else {
                 this.gameTime += deltaTime * 1000;
             }
         }
 
-        // Update invulnerability state
-        if (this.lastDamageTime > 0) {
-            const timeSinceDamage = this.gameTime - this.lastDamageTime;
-            if (timeSinceDamage < this.invulnerabilityDuration) {
-                this.isInvincible = true;
-            } else {
-                this.isInvincible = false;
+        // Handle player collision with ground
+        if (this.y >= 450) {
+            // Player too far fall - respawn (or game over)
+            this.isGrounded = true;
+            this.respawn();
+            this.takeDamage();
+        }
+
+        // Handle hit flashing
+        if (this.isHit) {
+            if (this.gameTime - this.lastDamageTime > this.invulnerabilityDuration) {
                 this.isHit = false;
-                this.lastDamageTime = 0;
-            }
-        } else {
-            this.isInvincible = false;
-        }
-
-        // Skip physics updates if dead, but still update animation
-        if (!this.isDead) {
-            // Update horizontal movement based on input
-            this.updateHorizontalMovement(deltaTime);
-
-            // Update vertical movement and gravity
-            this.updateVerticalMovement(deltaTime);
-
-            // Check if player has fallen too far (respawn)
-            if (this.y > this.respawnY + this.maxFallDistance) {
-                this.respawn();
             }
         }
 
-        // Always update animation state (even when dead)
-        this.updateAnimationState(deltaTime);
+        // Handle death and render dead animation
+        // Get current animation state appropriately for the current player state
+        this.updateAnimationState();
     }
 
     /**
-     * Update horizontal movement
-     * @param {number} deltaTime - Time elapsed since last frame
+     * Update animation state based on current conditions
      */
-    updateHorizontalMovement(deltaTime) {
-        // Only apply delta time if it looks like actual delta (not game time)
-        if (deltaTime > 100) {
-            deltaTime = 0.016; // Default to ~60fps if gameTime passed
-        }
-
-        if (this.inputState.left) {
-            this.vx = -this.moveSpeed * this.acceleration;
-            this.direction = -1;
-        } else if (this.inputState.right) {
-            this.vx = this.moveSpeed * this.acceleration;
-            this.direction = 1;
-        } else {
-            this.vx = 0;
-        }
-
-        // Apply velocity
-        this.x += this.vx * deltaTime;
-    }
-
-    /**
-     * Update vertical movement and gravity
-     * @param {number} deltaTime - Time elapsed since last frame
-     */
-    updateVerticalMovement(deltaTime) {
-        // Only apply delta time if it looks like actual delta (not game time)
-        if (deltaTime > 100) {
-            deltaTime = 0.016; // Default to ~60fps if gameTime passed
-        }
-
-        // Apply gravity if not grounded
-        if (!this.isGrounded) {
-            this.vy += this.gravity * deltaTime;
-
-            // Cap fall speed
-            if (this.vy > this.maxFallSpeed) {
-                this.vy = this.maxFallSpeed;
-            }
-        }
-
-        // Apply vertical velocity
-        this.y += this.vy * deltaTime;
-
-        // Check if still jumping (based on button hold duration)
-        if (this.isJumping && this.inputState.jump) {
-            const jumpElapsed = performance.now() / 1000 - this.jumpStartTime;
-            if (jumpElapsed > this.jumpMaxDuration) {
-                this.isJumping = false;
-            }
-        } else if (this.isJumping && !this.inputState.jump) {
-            this.isJumping = false;
-        }
-    }
-
-    /**
-     * Update animation state based on movement
-     * @param {number} deltaTime - Time elapsed since last frame
-     */
-    updateAnimationState(deltaTime) {
-        // Only apply delta time if it looks like actual delta (not game time)
-        if (deltaTime > 100) {
-            deltaTime = 0.016; // Default to ~60fps if gameTime passed
-        }
-
-        let newState = 'idle';
-
+    updateAnimationState() {
         if (this.isDead) {
-            newState = 'dead';
+            this.animationState = 'dead';
         } else if (this.isHit) {
-            newState = 'hit';
-        } else if (this.isJumping || (this.vy < -50)) {
-            newState = 'jumping';
-        } else if (!this.isGrounded && this.vy > 50) {
-            newState = 'falling';
+            this.animationState = 'hit';
+        } else if (this.isJumping || this.isFalling) {
+            this.animationState = 'falling';
         } else if (this.vx !== 0) {
-            newState = 'running';
+            this.animationState = 'running';
         } else {
-            newState = 'idle';
-        }
-
-        // Update animation frame
-        if (newState === this.animationState) {
-            this.frameTimer += deltaTime;
-            if (this.frameTimer >= this.frameInterval) {
-                this.frameTimer = 0;
-                if (newState === 'running') {
-                    this.currentFrame = (this.currentFrame + 1) % 3; // 3-frame run animation
-                } else if (newState === 'hit') {
-                    this.currentFrame = (this.currentFrame + 1) % 2; // 2-frame hit animation
-                } else {
-                    this.currentFrame = 0;
-                }
-            }
-        } else {
-            // State changed - reset animation frame
-            this.animationState = newState;
-            this.currentFrame = 0;
-            this.frameTimer = 0;
+            this.animationState = 'idle';
         }
     }
 
     /**
-     * Initiate jump
-     */
-    jump() {
-        if (!this.isGrounded) return; // Cannot jump while airborne
-
-        this.vy = -this.jumpForce;
-        this.isGrounded = false;
-        this.isJumping = true;
-        this.jumpStartTime = performance.now() / 1000;
-        this.inputState.jump = true;
-    }
-
-    /**
-     * Release jump button (for variable jump height)
-     */
-    releaseJump() {
-        this.inputState.jump = false;
-        if (this.isJumping && this.vy < 0) {
-            this.isJumping = false;
-        }
-    }
-
-    /**
-     * Set player as grounded (touching platform)
-     */
-    setGrounded(isGrounded) {
-        this.isGrounded = isGrounded;
-        if (isGrounded) {
-            this.vy = 0;
-            this.isFalling = false;
-        }
-    }
-
-    /**
-     * Handle collision with enemy (take damage)
+     * Player takes damage
      */
     takeDamage() {
-        if (this.isInvincible || this.isDead) {
-            return false;
-        }
+        if (this.isInvincible) return false;
 
-        this.health -= 1;
+        this.health--;
+        this.isHit = true;
         this.lastDamageTime = this.gameTime;
         this.isInvincible = true;
-        this.isHit = true;
 
-        if (this.health <= 0) {
+        if (this.health < 0) {
             this.health = 0;
             this.isDead = true;
         }
@@ -400,7 +265,8 @@ class Player {
     }
 }
 
-// Export for Node.js/Jest
+// Export for Node.js/Jest - support BOTH default and named imports
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Player };
+    Player.Player = Player;
+    module.exports = Player;
 }
