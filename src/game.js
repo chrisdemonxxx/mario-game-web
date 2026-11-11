@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 class UIHud {
     constructor(canvas) {
         this.canvas = canvas;
@@ -21,48 +20,68 @@ class UIHud {
         this.ctx.fillStyle = '#000';
         this.ctx.font = '16px Arial';
         this.ctx.fillText('Health: ', 10, 70);
+
+        // Render hearts
         for (let i = 0; i < maxHealth; i++) {
+            const x = 80 + (i * 20);
+            const y = 55;
             if (i < health) {
-                this.ctx.fillStyle = '#f00';
+                this.ctx.fillStyle = '#FF0000'; // Red heart
+                this.ctx.fillText('❤', x, y);
             } else {
-                this.ctx.fillStyle = '#999';
+                this.ctx.fillStyle = '#CCCCCC'; // Gray empty heart
+                this.ctx.fillText('♡', x, y);
             }
-            this.ctx.fillRect(75 + i * 20, 60, 15, 15);
         }
     }
 
-    renderLevel(levelNumber, totalLevels) {
-        this.ctx.fillStyle = '#000';
-        this.ctx.font = '16px Arial';
-        this.ctx.fillText(`Level: ${levelNumber}/${totalLevels}`, 10, 95);
-    }
-
-    renderRestartHint() {
-        this.ctx.fillStyle = '#666';
-        this.ctx.font = '12px Arial';
-        this.ctx.fillText('(Press R to restart)', 10, 115);
-    }
-
     renderGameOverScreen(score, reason) {
+        // Darken background
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.fillStyle = '#fff';
-        this.ctx.font = '32px Arial';
-        this.ctx.fillText('GAME OVER', this.canvas.width / 2 - 120, this.canvas.height / 2 - 20);
-        this.ctx.font = '18px Arial';
-        this.ctx.fillText(`Reason: ${reason}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 20);
-        this.ctx.fillText(`Final Score: ${score}`, this.canvas.width / 2 - 100, this.canvas.height / 2 + 60);
+
+        // Game Over text
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 60);
+
+        // Final score
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText(`Final Score: ${score}`, this.canvas.width / 2, this.canvas.height / 2);
+
+        // Reason
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText(reason, this.canvas.width / 2, this.canvas.height / 2 + 40);
+
+        // Options
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('Press R to Restart | Press M for Menu', this.canvas.width / 2, this.canvas.height / 2 + 80);
+
+        this.ctx.textAlign = 'left';
     }
 
     renderWinScreen(score, levelBonus) {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        // Darken background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.ctx.fillStyle = '#0f0';
-        this.ctx.font = '32px Arial';
-        this.ctx.fillText('LEVEL WON!', this.canvas.width / 2 - 130, this.canvas.height / 2 - 20);
-        this.ctx.font = '18px Arial';
-        this.ctx.fillText(`Base Score: ${score}`, this.canvas.width / 2 - 100, this.canvas.height / 2 + 20);
-        this.ctx.fillText(`Bonus: +${levelBonus}`, this.canvas.width / 2 - 80, this.canvas.height / 2 + 60);
+
+        // Level Complete text
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('LEVEL COMPLETE!', this.canvas.width / 2, this.canvas.height / 2 - 60);
+
+        // Score and bonus
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText(`Score: ${score}`, this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.fillText(`Bonus: +${levelBonus}`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+
+        // Options
+        this.ctx.font = '14px Arial';
+        this.ctx.fillText('Press SPACE for Next Level | Press M for Menu', this.canvas.width / 2, this.canvas.height / 2 + 100);
+
+        this.ctx.textAlign = 'left';
     }
 }
 
@@ -73,13 +92,12 @@ class Game {
         this.ctx = canvas.getContext('2d');
         this.score = 0;
         this.gameRunning = true;
-        this.gameState = 'menu';
+        this.gameState = 'menu'; // menu, playing, paused, gameover, won
         this.hud = new UIHud(canvas);
         this.currentLevel = 1;
         this.gameOverReason = '';
         this.levelCompletionBonus = 0;
         this.gameTime = 0;
-        this.setupKeyboardControls();
     }
 
     start() {
@@ -130,12 +148,6 @@ class Game {
         this.gameOverReason = '';
     }
 
-    restartLevel() {
-        this.gameState = 'playing';
-        this.gameRunning = true;
-        this.gameTime = 0;
-    }
-
     returnToMenu() {
         this.gameState = 'menu';
         this.gameRunning = false;
@@ -145,7 +157,7 @@ class Game {
 
     updateGameTime(deltaTime) {
         if (this.gameRunning) {
-            this.gameTime += deltaTime || 16;
+            this.gameTime += deltaTime || 16; // Default 16ms for ~60fps
         }
     }
 
@@ -165,23 +177,15 @@ class Game {
     addScore(points) {
         this.score += points;
     }
-
-    // Setup keyboard controls (R-key for restart)
-    setupKeyboardControls() {
-        const keydownHandler = (event) => {
-            if (event.key === 'r' || event.key === 'R') {
-                this.restartLevel();
-            }
-        };
-        
-        if (typeof window !== 'undefined') {
-            window.addEventListener('keydown', keydownHandler);
-        }
-    }
 }
 
 // eslint-disable-next-line no-undef
 if (typeof module !== 'undefined' && module.exports) {
     // eslint-disable-next-line no-undef
+    module.exports = { Game, UIHud };
+}
+
+// Export for Jest (CommonJS) while staying usable as a plain <script> in the browser.
+if (typeof module !== 'undefined' && module.exports) {
     module.exports = { Game, UIHud };
 }
