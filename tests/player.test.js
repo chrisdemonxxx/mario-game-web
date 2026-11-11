@@ -1,3 +1,5 @@
+const Player = require('../src/player');
+
 describe('Player', () => {
     let player;
     beforeEach(() => { 
