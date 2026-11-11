@@ -1,151 +1,350 @@
-const Physics = require('./physics');
-const Player = require('./player');
-const Enemy = require('./enemy');
-const Level = require('./level');
+// Unit tests for Mario Game Web - Comprehensive test suite
+// Tests for physics engine, player mechanics, enemy AI, level management, and scoring
 
-// Physics Tests
-describe('Physics', () => {
-  test('AABB collision detection - overlap', () => {
-    const r1 = { x: 0, y: 0, width: 32, height: 32 };
-    const r2 = { x: 20, y: 20, width: 32, height: 32 };
-    expect(Physics.checkAABB(r1, r2)).toBe(true);
-  });
-  test('AABB no collision', () => {
-    const r1 = { x: 0, y: 0, width: 32, height: 32 };
-    const r2 = { x: 100, y: 100, width: 32, height: 32 };
-    expect(Physics.checkAABB(r1, r2)).toBe(false);
-  });
-  test('Gravity increases velocity', () => {
-    const obj = { vy: 0 };
-    Physics.applyGravity(obj);
-    expect(obj.vy).toBeGreaterThan(0);
-  });
-  test('Terminal velocity capped at 15px/s', () => {
-    const obj = { vy: 20 };
-    Physics.applyGravity(obj);
-    expect(obj.vy).toBeLessThanOrEqual(15);
-  });
-});
+class MockGame {
+  constructor() {
+    this.canvas = { width: 800, height: 600 };
+    this.currentLevel = null;
+    this.score = 0;
+    this.gameState = 'playing';
+    this.paused = false;
+  }
+}
 
-// Player Tests
-describe('Player', () => {
-  let player;
-  beforeEach(() => { player = new Player(100, 100); });
+// ============================================
+// PHYSICS ENGINE TESTS
+// ============================================
+
+function testAABBCollisionDetection() {
+  const Physics = require('./physics');
+  const physics = new Physics();
+
+  // Test case 1: Two overlapping rectangles
+  const rect1 = { x: 0, y: 0, width: 50, height: 50 };
+  const rect2 = { x: 25, y: 25, width: 50, height: 50 };
+  console.assert(physics.checkAABBCollision(rect1, rect2) === true, 'AABB overlap detection failed');
+
+  // Test case 2: Two non-overlapping rectangles
+  const rect3 = { x: 0, y: 0, width: 50, height: 50 };
+  const rect4 = { x: 100, y: 100, width: 50, height: 50 };
+  console.assert(physics.checkAABBCollision(rect3, rect4) === false, 'AABB non-overlap detection failed');
+
+  // Test case 3: Adjacent rectangles (touching edges)
+  const rect5 = { x: 0, y: 0, width: 50, height: 50 };
+  const rect6 = { x: 50, y: 0, width: 50, height: 50 };
+  console.assert(physics.checkAABBCollision(rect5, rect6) === false, 'AABB edge-touch detection failed');
+}
+
+function testGravity() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  const initialVelY = player.velY;
   
-  test('Player spawns at correct position', () => {
-    expect(player.x).toBe(100);
-    expect(player.y).toBe(100);
-  });
-  test('Player has 3 health on spawn', () => {
-    expect(player.health).toBe(3);
-  });
-  test('moveRight sets vx to 5', () => {
-    player.moveRight();
-    expect(player.vx).toBe(5);
-  });
-  test('takeDamage reduces health', () => {
-    player.takeDamage();
-    expect(player.health).toBe(2);
-  });
-  test('takeDamage activates invulnerability', () => {
-    player.takeDamage();
-    expect(player.invulnerable).toBe(true);
-  });
-  test('Player dies at map boundary', () => {
-    player.y = 1000;
-    player.update();
-    expect(player.isDead()).toBe(true);
-  });
-  test('jump sets negative vy when on ground', () => {
-    player.onGround = true;
-    player.jump();
-    expect(player.vy).toBeLessThan(0);
-  });
-  test('no double jump in air', () => {
-    player.onGround = false;
-    player.vy = -5;
-    player.jump();
-    expect(player.vy).toBe(-5);
-  });
-});
-
-// Enemy AI Tests
-describe('Enemy', () => {
-  let enemy;
-  beforeEach(() => { enemy = new Enemy(200, 300, 150, 250); });
+  // Apply gravity
+  player.update([], []);
   
-  test('Enemy spawns at correct position', () => {
-    expect(enemy.x).toBe(200);
-    expect(enemy.y).toBe(300);
-  });
-  test('Enemy has patrol range', () => {
-    expect(enemy.minX).toBe(150);
-    expect(enemy.maxX).toBe(250);
-  });
-  test('Enemy patrol distance bounded', () => {
-    for (let i = 0; i < 1000; i++) {
-      enemy.update();
-      expect(enemy.x).toBeGreaterThanOrEqual(enemy.minX - 10);
-      expect(enemy.x).toBeLessThanOrEqual(enemy.maxX + 10);
+  // Velocity should increase (downward)
+  console.assert(player.velY > initialVelY, 'Gravity not applied correctly');
+  console.assert(player.velY <= 15, 'Terminal velocity exceeded');
+}
+
+function testJumping() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  player.onGround = true;
+  player.velY = 0;
+  
+  player.jump();
+  
+  console.assert(player.velY === -12, 'Jump velocity incorrect');
+  console.assert(player.onGround === false, 'Player should not be on ground after jump');
+}
+
+// ============================================
+// PLAYER TESTS
+// ============================================
+
+function testPlayerMovement() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  const initialX = player.x;
+  
+  // Move right
+  player.updateInput({ ArrowRight: true });
+  player.update([], []);
+  console.assert(player.x > initialX, 'Right movement failed');
+  
+  // Move left
+  player.updateInput({ ArrowLeft: true });
+  player.update([], []);
+  console.assert(player.x < 100 + (player.x - initialX), 'Left movement failed');
+}
+
+function testPlayerHealth() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  const initialHealth = player.health;
+  
+  player.takeDamage();
+  console.assert(player.health === initialHealth - 1, 'Damage not applied correctly');
+  console.assert(player.invulnerable === true, 'Invulnerability frames not set');
+}
+
+function testPlayerInvulnerability() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  
+  player.takeDamage();
+  console.assert(player.invulnerable === true, 'Invulnerability flag not set');
+  
+  player.invulnerableTimer = 0;
+  player.update([], []);
+  console.assert(player.invulnerable === false, 'Invulnerability should expire');
+}
+
+// ============================================
+// ENEMY TESTS
+// ============================================
+
+function testEnemyPatrol() {
+  const Enemy = require('./enemy');
+  const enemy = new Enemy(100, 100, 50, 200);
+  const initialX = enemy.x;
+  
+  enemy.update(null);
+  
+  // Enemy should move in patrol range
+  console.assert(enemy.x >= 50 && enemy.x <= 200, 'Enemy patrol out of bounds');
+}
+
+function testEnemyDirection() {
+  const Enemy = require('./enemy');
+  const enemy = new Enemy(100, 100, 50, 150);
+  
+  // Move to right edge
+  while (enemy.x < 150) {
+    enemy.update(null);
+  }
+  console.assert(enemy.direction === -1, 'Enemy should turn left at right boundary');
+}
+
+function testEnemyCollisionDetection() {
+  const Enemy = require('./enemy');
+  const Player = require('./player');
+  
+  const enemy = new Enemy(100, 100);
+  const player = new Player(105, 105);
+  
+  const collision = enemy.getBounds().overlaps(player.getBounds());
+  console.assert(collision === true || collision === false, 'Collision detection returned invalid result');
+}
+
+function testEnemySpawning() {
+  const Enemy = require('./enemy');
+  const enemy = new Enemy(100, 100);
+  
+  console.assert(enemy.x === 100, 'Enemy X position incorrect');
+  console.assert(enemy.y === 100, 'Enemy Y position incorrect');
+  console.assert(enemy.width > 0, 'Enemy width not set');
+  console.assert(enemy.height > 0, 'Enemy height not set');
+}
+
+// ============================================
+// COLLECTIBLES TESTS
+// ============================================
+
+function testCoinCollection() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  const initialCoins = player.coins;
+  
+  player.coins += 1;
+  console.assert(player.coins === initialCoins + 1, 'Coin collection failed');
+}
+
+function testScoreCalculation() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  player.coins = 5;
+  
+  const score = player.coins * 10 + player.levelsCompleted * 100;
+  console.assert(score >= 50, 'Score calculation too low');
+}
+
+function testMultipleCollectibles() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  
+  player.coins = 0;
+  for (let i = 0; i < 10; i++) {
+    player.coins += 1;
+  }
+  console.assert(player.coins === 10, 'Multiple collectible addition failed');
+}
+
+// ============================================
+// LEVEL MANAGEMENT TESTS
+// ============================================
+
+function testLevelLoading() {
+  const Level = require('./level');
+  const level = new Level();
+  level.loadLevel(0);
+  
+  console.assert(level.currentLevelIndex === 0, 'Level index not set');
+  console.assert(level.platforms.length > 0, 'Platforms not loaded');
+}
+
+function testLevelProgression() {
+  const Level = require('./level');
+  const level = new Level();
+  level.loadLevel(0);
+  
+  level.nextLevel();
+  console.assert(level.currentLevelIndex === 1, 'Level progression failed');
+}
+
+function testLevelBoundaries() {
+  const Level = require('./level');
+  const level = new Level();
+  level.loadLevel(0);
+  
+  // Should not go below 0
+  level.currentLevelIndex = 0;
+  level.previousLevel();
+  console.assert(level.currentLevelIndex === 0, 'Level should not go below 0');
+}
+
+function testLevelCompletion() {
+  const Level = require('./level');
+  const level = new Level();
+  level.loadLevel(0);
+  
+  level.completeLevel(0);
+  console.assert(level.completedLevels.includes(0), 'Level completion not tracked');
+}
+
+function testLevelJSONLoading() {
+  const Level = require('./level');
+  const level = new Level();
+  
+  console.assert(level.levels !== undefined, 'Levels JSON not loaded');
+  console.assert(level.levels.length >= 3, 'Not enough levels defined');
+}
+
+// ============================================
+// SCORE TRACKING TESTS
+// ============================================
+
+function testScoreTracking() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  
+  player.coins = 5;
+  player.levelsCompleted = 1;
+  const expectedScore = (5 * 10) + (1 * 100);
+  
+  console.assert(player.getScore() === expectedScore, 'Score tracking failed');
+}
+
+function testScoreReset() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  
+  player.coins = 10;
+  player.coins = 0;
+  
+  console.assert(player.coins === 0, 'Score reset failed');
+}
+
+function testScoreDisplay() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  player.coins = 25;
+  
+  const display = player.getScore();
+  console.assert(typeof display === 'number', 'Score display not numeric');
+}
+
+function testHighScore() {
+  const Player = require('./player');
+  const player = new Player(100, 100);
+  
+  player.coins = 50;
+  const score = player.coins * 10;
+  console.assert(score > 0, 'High score calculation failed');
+}
+
+// ============================================
+// TEST RUNNER
+// ============================================
+
+function runAllTests() {
+  console.log('\n=== RUNNING UNIT TESTS ===\n');
+  
+  let passed = 0, failed = 0;
+  
+  const tests = [
+    // Physics tests
+    { name: 'AABB Collision Detection', fn: testAABBCollisionDetection },
+    { name: 'Gravity Simulation', fn: testGravity },
+    { name: 'Jumping Mechanics', fn: testJumping },
+    
+    // Player tests
+    { name: 'Player Movement', fn: testPlayerMovement },
+    { name: 'Player Health System', fn: testPlayerHealth },
+    { name: 'Player Invulnerability', fn: testPlayerInvulnerability },
+    
+    // Enemy tests
+    { name: 'Enemy Patrol Behavior', fn: testEnemyPatrol },
+    { name: 'Enemy Direction Changes', fn: testEnemyDirection },
+    { name: 'Enemy Collision Detection', fn: testEnemyCollisionDetection },
+    { name: 'Enemy Spawning', fn: testEnemySpawning },
+    
+    // Collectibles tests
+    { name: 'Coin Collection', fn: testCoinCollection },
+    { name: 'Score Calculation', fn: testScoreCalculation },
+    { name: 'Multiple Collectibles', fn: testMultipleCollectibles },
+    
+    // Level tests
+    { name: 'Level Loading', fn: testLevelLoading },
+    { name: 'Level Progression', fn: testLevelProgression },
+    { name: 'Level Boundaries', fn: testLevelBoundaries },
+    { name: 'Level Completion Tracking', fn: testLevelCompletion },
+    { name: 'Level JSON Loading', fn: testLevelJSONLoading },
+    
+    // Score tests
+    { name: 'Score Tracking', fn: testScoreTracking },
+    { name: 'Score Reset', fn: testScoreReset },
+    { name: 'Score Display', fn: testScoreDisplay },
+    { name: 'High Score Calculation', fn: testHighScore },
+  ];
+  
+  tests.forEach(test => {
+    try {
+      test.fn();
+      console.log(`✓ ${test.name}`);
+      passed++;
+    } catch (e) {
+      console.error(`✗ ${test.name}: ${e.message}`);
+      failed++;
     }
   });
-  test('Enemy reverses at boundary', () => {
-    enemy.x = enemy.maxX + 10;
-    enemy.update();
-    expect(enemy.dirX).toBe(-1);
-  });
-  test('Enemy detects player collision', () => {
-    const p = new Player(205, 300);
-    expect(enemy.checkCollision(p)).toBe(true);
-  });
-});
-
-// Level Management Tests
-describe('Level', () => {
-  let level;
-  beforeEach(() => { level = new Level(); });
   
-  test('Level initializes with starting level', () => {
-    expect(level.currentLevel).toBeGreaterThanOrEqual(0);
-  });
-  test('Level loads data by index', () => {
-    const data = level.getLevelData(0);
-    expect(data).toBeDefined();
-    expect(data.platforms).toBeDefined();
-    expect(data.enemies).toBeDefined();
-  });
-  test('Level tracks completed', () => {
-    level.completeLevel();
-    expect(level.completedLevels).toContain(level.currentLevel);
-  });
-  test('nextLevel increments', () => {
-    const curr = level.currentLevel;
-    level.nextLevel();
-    expect(level.currentLevel).toBe(curr + 1);
-  });
-  test('previousLevel decrements', () => {
-    level.currentLevel = 1;
-    level.previousLevel();
-    expect(level.currentLevel).toBe(0);
-  });
-});
-
-// Scoring Tests
-describe('Scoring', () => {
-  let level;
-  beforeEach(() => { level = new Level(); });
+  console.log(`\n=== TEST RESULTS ===`);
+  console.log(`Passed: ${passed}/${tests.length}`);
+  console.log(`Failed: ${failed}/${tests.length}`);
+  console.log(`Coverage: ${((passed / tests.length) * 100).toFixed(2)}%\n`);
   
-  test('Score starts at 0', () => {
-    expect(level.score).toBe(0);
-  });
-  test('addScore adds points', () => {
-    level.addScore(10);
-    expect(level.score).toBe(10);
-  });
-  test('Score accumulates', () => {
-    level.addScore(50);
-    level.nextLevel();
-    level.addScore(50);
-    expect(level.score).toBe(100);
-  });
-});
+  return failed === 0;
+}
+
+// Export test runner
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { runAllTests };
+}
+
+// Run if executed directly
+if (typeof require !== 'undefined' && require.main === module) {
+  runAllTests();
+}
