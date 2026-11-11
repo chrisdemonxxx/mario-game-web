@@ -130,9 +130,9 @@ describe('Enemy Class', () => {
             const other = { x: 60, y: 110, width: 32, height: 32 };
             const collision1 = enemy.isCollidingWith(other);
             const collision2 = other.x < enemy.x + enemy.width &&
-                               other.x + other.width > enemy.x &&
-                               other.y < enemy.y + enemy.height &&
-                               other.y + other.height > enemy.y;
+                         other.x + other.width > enemy.x &&
+                         other.y < enemy.y + enemy.height &&
+                         other.y + other.height > enemy.y;
             expect(collision1).toBe(collision2);
         });
     });

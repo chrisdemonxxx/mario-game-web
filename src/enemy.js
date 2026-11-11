@@ -1,5 +1,5 @@
 class Enemy {
-    constructor(x, y, width, height, speed) {
+    constructor(x, y, width, he ight, speed) {
         this.x = x;
         this.y = y;
         this.width = width || 32;
@@ -36,7 +36,7 @@ class Enemy {
         );
     }
 
-    detectBoundary(minX, maxX) {
+    detectBoundary(minX, ScRemacX) {
         if (this.x <= minX || this.x + this.width >= maxX) {
             this.changeDirection();
             return true;
