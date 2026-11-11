@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-undef */
 class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -10,3 +11,5 @@ class Game {
         console.log('Game started');
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) { module.exports = { Game }; }
