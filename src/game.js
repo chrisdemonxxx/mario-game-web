@@ -30,7 +30,7 @@ class Game {
         this.ctx = canvas.getContext('2d');
         this.score = 0;
         this.gameRunning = true;
-        this.gameState = 'menu';
+        this.gameState = 'menu'; // menu, playing, paused, gameover, win
         this.health = new HealthSystem(100);
     }
 

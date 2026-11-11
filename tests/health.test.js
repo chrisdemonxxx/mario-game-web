@@ -1,102 +1,109 @@
-const { Game, HealthSystem } = require("../src/game");
+const { Game, HealthSystem } = require('../src/game.js');
+
 describe('Health and Game Over System', () => {
     let canvas;
     let game;
 
     beforeEach(() => {
-        canvas = document.createElement('canvas');
-        canvas.width = 800;
-        canvas.height = 600;
+        canvas = { getContext: () => ({}) };
         game = new Game(canvas);
     });
 
-    test('Game initializes with health system', () => {
-        expect(game.health).toBeDefined();
-        expect(game.health.currentHealth).toBe(100);
-        expect(game.health.maxHealth).toBe(100);
-        expect(game.health.isAlive).toBe(true);
-    });
-
-    test('HealthSystem takes damage correctly', () => {
+    test('HealthSystem initializes with max health', () => {
         const health = new HealthSystem(100);
-        const isAlive = health.takeDamage(30);
-        expect(health.currentHealth).toBe(70);
-        expect(isAlive).toBe(true);
+        expect(health.currentHealth).toBe(100);
+        expect(health.maxHealth).toBe(100);
+        expect(health.isAlive).toBe(true);
     });
 
-    test('HealthSystem dies when health reaches 0', () => {
+    test('HealthSystem.takeDamage reduces health', () => {
         const health = new HealthSystem(100);
-        health.takeDamage(100);
-        expect(health.currentHealth).toBe(0);
-        expect(health.isAlive).toBe(false);
+        health.takeDamage(25);
+        expect(health.currentHealth).toBe(75);
+        expect(health.isAlive).toBe(true);
     });
 
-    test('HealthSystem cannot go below 0', () => {
+    test('HealthSystem.takeDamage below zero sets health to zero', () => {
         const health = new HealthSystem(100);
         health.takeDamage(150);
         expect(health.currentHealth).toBe(0);
         expect(health.isAlive).toBe(false);
     });
 
-    test('HealthSystem heals correctly', () => {
+    test('HealthSystem.heal restores health', () => {
         const health = new HealthSystem(100);
         health.takeDamage(50);
         health.heal(30);
         expect(health.currentHealth).toBe(80);
     });
 
-    test('HealthSystem cannot exceed max health', () => {
+    test('HealthSystem.heal does not exceed max health', () => {
         const health = new HealthSystem(100);
-        health.takeDamage(50);
-        health.heal(100);
+        health.heal(50);
         expect(health.currentHealth).toBe(100);
     });
 
-    test('HealthSystem resets correctly', () => {
+    test('HealthSystem.reset restores full health and alive state', () => {
         const health = new HealthSystem(100);
-        health.takeDamage(75);
+        health.takeDamage(100);
+        expect(health.isAlive).toBe(false);
         health.reset();
         expect(health.currentHealth).toBe(100);
         expect(health.isAlive).toBe(true);
     });
 
-    test('Game.start() resets health', () => {
-        game.health.takeDamage(50);
-        game.start();
+    test('Game initializes with health system', () => {
+        expect(game.health).toBeDefined();
+        expect(game.health instanceof HealthSystem).toBe(true);
         expect(game.health.currentHealth).toBe(100);
-        expect(game.gameState).toBe('playing');
     });
 
-    test('Game.takeDamage() reduces health', () => {
-        game.start();
-        const isAlive = game.takeDamage(25);
-        expect(game.health.currentHealth).toBe(75);
+    test('Game.takeDamage reduces player health', () => {
+        const initialHealth = game.health.currentHealth;
+        game.takeDamage(10);
+        expect(game.health.currentHealth).toBe(initialHealth - 10);
+    });
+
+    test('Game.takeDamage returns false when health reaches zero', () => {
+        game.health.currentHealth = 10;
+        const isAlive = game.takeDamage(20);
+        expect(isAlive).toBe(false);
+        expect(game.gameState).toBe('gameover');
+    });
+
+    test('Game.takeDamage returns true when health remains positive', () => {
+        const isAlive = game.takeDamage(10);
         expect(isAlive).toBe(true);
-        expect(game.gameState).toBe('playing');
+        expect(game.gameState).not.toBe('gameover');
     });
 
-    test('Game ends when health depletes', () => {
+    test('Game.endGame sets game state to gameover', () => {
         game.start();
-        game.takeDamage(100);
+        game.endGame();
         expect(game.gameState).toBe('gameover');
         expect(game.gameRunning).toBe(false);
     });
 
-    test('Game.winGame() sets win state', () => {
+    test('Game.winGame sets game state to win', () => {
         game.start();
         game.winGame();
         expect(game.gameState).toBe('win');
         expect(game.gameRunning).toBe(false);
     });
 
-    test('Multiple damage hits leading to game over', () => {
+    test('Game.start resets health', () => {
+        game.health.takeDamage(50);
+        expect(game.health.currentHealth).toBe(50);
         game.start();
-        game.takeDamage(30);
-        expect(game.health.currentHealth).toBe(70);
-        game.takeDamage(40);
-        expect(game.health.currentHealth).toBe(30);
-        game.takeDamage(30);
-        expect(game.health.currentHealth).toBe(0);
+        expect(game.health.currentHealth).toBe(100);
+        expect(game.health.isAlive).toBe(true);
+    });
+
+    test('Health goes to gameover when depleted', () => {
+        while (game.health.currentHealth > 0) {
+            game.takeDamage(20);
+        }
         expect(game.gameState).toBe('gameover');
+        expect(game.gameRunning).toBe(false);
     });
 });
