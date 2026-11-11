@@ -70,6 +70,32 @@ class Player {
         this.maxFallDistance = 600;
     }
 
+    get velocityX() {
+        return this.vx;
+    }
+
+    set velocityX(value) {
+        this.vx = value;
+    }
+
+    get velocityY() {
+        return this.vy;
+    }
+
+    set velocityY(value) {
+        this.vy = value;
+    }
+
+    moveLeft() {
+        this.velocityX = -3;
+        this.direction = -1;
+    }
+
+    moveRight() {
+        this.velocityX = 3;
+        this.direction = 1;
+    }
+
     /**
      * Update player state based on input and physics
      * @param {number} deltaTime - Time elapsed since last frame (in seconds or game time)
@@ -93,27 +119,28 @@ class Player {
                 this.isInvincible = true;
             } else {
                 this.isInvincible = false;
+                this.isHit = false;
                 this.lastDamageTime = 0;
             }
         } else {
             this.isInvincible = false;
         }
 
-        // Skip physics updates if dead, but always update animation
+        // Skip physics updates if dead, but still update animation
         if (!this.isDead) {
             // Update horizontal movement based on input
             this.updateHorizontalMovement(deltaTime);
 
             // Update vertical movement and gravity
             this.updateVerticalMovement(deltaTime);
+
+            // Check if player has fallen too far (respawn)
+            if (this.y > this.respawnY + this.maxFallDistance) {
+                this.respawn();
+            }
         }
 
-        // Always check if player has fallen too far (respawn)
-        if (this.y > this.respawnY + this.maxFallDistance) {
-            this.respawn();
-        }
-
-        // Always update animation state
+        // Always update animation state (even when dead)
         this.updateAnimationState(deltaTime);
     }
 
@@ -180,6 +207,11 @@ class Player {
      * @param {number} deltaTime - Time elapsed since last frame
      */
     updateAnimationState(deltaTime) {
+        // Only apply delta time if it looks like actual delta (not game time)
+        if (deltaTime > 100) {
+            deltaTime = 0.016; // Default to ~60fps if gameTime passed
+        }
+
         let newState = 'idle';
 
         if (this.isDead) {
@@ -210,7 +242,7 @@ class Player {
                 }
             }
         } else {
-            // State changed
+            // State changed - reset animation frame
             this.animationState = newState;
             this.currentFrame = 0;
             this.frameTimer = 0;
@@ -253,44 +285,23 @@ class Player {
 
     /**
      * Handle collision with enemy (take damage)
-     * @returns {boolean} true if damage was taken, false if blocked by invulnerability
      */
     takeDamage() {
-        // Only take damage if not invincible and still alive
-        if (!this.isInvincible && this.health > 0) {
-            this.health = Math.max(0, this.health - 1);
-            this.lastDamageTime = this.gameTime;
-            this.isInvincible = true;
-
-            if (this.health === 0) {
-                this.isDead = true;
-            }
-
-            return true; // Damage was taken
-        }
-        return false; // Damage was blocked by invulnerability
-    }
-
-    /**
-     * Heal the player
-     * @param {number} amount - Amount to heal
-     */
-    heal(amount) {
-        this.health = Math.min(this.maxHealth, this.health + amount);
-    }
-
-    /**
-     * Check if player should flash (visual feedback during invulnerability)
-     * @returns {boolean} true if currently flashing
-     */
-    isFlashing() {
-        if (!this.isInvincible) {
+        if (this.isInvincible || this.isDead) {
             return false;
         }
-        // Flash every 100ms
-        const flashInterval = 100;
-        const timeSinceDamage = this.gameTime - this.lastDamageTime;
-        return Math.floor(timeSinceDamage / flashInterval) % 2 === 0;
+
+        this.health -= 1;
+        this.lastDamageTime = this.gameTime;
+        this.isInvincible = true;
+        this.isHit = true;
+
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isDead = true;
+        }
+
+        return true;
     }
 
     /**
