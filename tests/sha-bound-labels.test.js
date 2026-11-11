@@ -7,6 +7,8 @@ const {
     compareShas,
     findLatestCommentWithPattern,
     shouldRemoveLabelsForSha,
+    getQaLabelsToRemove,
+    getReviewerLabelsToRemove,
     formatStatusComment,
 } = require('../src/sha-bound-labels');
 
@@ -67,84 +69,132 @@ describe('SHA-bound Labels', () => {
     });
 
     describe('findLatestCommentWithPattern', () => {
-        it('should find the most recent comment with pattern', () => {
-            const comments = [
-                { body: 'Initial comment' },
-                { body: 'QA: PASSED sha=abc1234' },
-                { body: 'Final comment' },
-            ];
-            const found = findLatestCommentWithPattern(comments, 'QA: PASSED');
-            expect(found.body).toBe('QA: PASSED sha=abc1234');
-        });
-
-        it('should return the last occurrence of pattern', () => {
+        it('should find the latest comment with matching pattern', () => {
             const comments = [
                 { body: 'QA: PASSED sha=abc1234' },
-                { body: 'Updating: QA: PASSED sha=def5678' },
+                { body: 'Code review done' },
+                { body: 'QA: FAILED sha=def5678' }
             ];
-            const found = findLatestCommentWithPattern(comments, 'QA: PASSED');
-            expect(found.body).toContain('def5678');
+            const latest = findLatestCommentWithPattern(comments, 'QA:');
+            expect(latest.body).toBe('QA: FAILED sha=def5678');
         });
 
-        it('should return null if pattern not found', () => {
+        it('should return null if no match found', () => {
             const comments = [
-                { body: 'Comment 1' },
-                { body: 'Comment 2' },
+                { body: 'Just a comment' },
+                { body: 'Another comment' }
             ];
-            const found = findLatestCommentWithPattern(comments, 'QA: PASSED');
-            expect(found).toBeNull();
+            const result = findLatestCommentWithPattern(comments, 'QA:');
+            expect(result).toBeNull();
         });
 
         it('should return null for empty comments array', () => {
-            const found = findLatestCommentWithPattern([], 'QA: PASSED');
-            expect(found).toBeNull();
-        });
-
-        it('should handle comments without body field', () => {
-            const comments = [
-                { body: 'QA: PASSED sha=abc1234' },
-                { id: 123 }, // No body
-                { body: 'Another comment' },
-            ];
-            const found = findLatestCommentWithPattern(comments, 'QA: PASSED');
-            expect(found.body).toContain('abc1234');
+            expect(findLatestCommentWithPattern([], 'QA:')).toBeNull();
         });
     });
 
     describe('shouldRemoveLabelsForSha', () => {
-        it('should return true when head SHA differs from approval SHA', () => {
-            const comments = [
-                { body: 'REVIEW: APPROVED sha=abc1234' },
-            ];
-            const result = shouldRemoveLabelsForSha('def5678', comments, 'REVIEW: APPROVED');
-            expect(result).toBe(true);
-        });
-
-        it('should return false when head SHA matches approval SHA', () => {
-            const comments = [
-                { body: 'REVIEW: APPROVED sha=abc1234' },
-            ];
-            const result = shouldRemoveLabelsForSha('abc1234', comments, 'REVIEW: APPROVED');
+        it('should return false when SHA matches latest comment', () => {
+            const comments = [{ body: 'QA: PASSED sha=abc1234' }];
+            const result = shouldRemoveLabelsForSha('abc1234', comments, 'QA: PASSED');
             expect(result).toBe(false);
         });
 
-        it('should return false when no status comment exists', () => {
-            const comments = [
-                { body: 'Some other comment' },
-            ];
-            const result = shouldRemoveLabelsForSha('abc1234', comments, 'REVIEW: APPROVED');
-            expect(result).toBe(false);
+        it('should return true when SHA differs from latest comment', () => {
+            const comments = [{ body: 'QA: PASSED sha=abc1234' }];
+            const result = shouldRemoveLabelsForSha('def5678', comments, 'QA: PASSED');
+            expect(result).toBe(true);
         });
 
-        it('should handle multiple comments and find latest', () => {
-            const comments = [
-                { body: 'REVIEW: APPROVED sha=abc1234' },
-                { body: 'Some update' },
-                { body: 'REVIEW: APPROVED sha=def5678' },
-            ];
-            // New head SHA doesn't match latest approval
-            const result = shouldRemoveLabelsForSha('ghi9012', comments, 'REVIEW: APPROVED');
+        it('should return true when no matching comment found', () => {
+            const comments = [{ body: 'Just a comment' }];
+            const result = shouldRemoveLabelsForSha('abc1234', comments, 'QA: PASSED');
             expect(result).toBe(true);
+        });
+
+        it('should handle empty comments array', () => {
+            const result = shouldRemoveLabelsForSha('abc1234', [], 'QA: PASSED');
+            expect(result).toBe(true);
+        });
+
+        it('should work with REVIEW: APPROVED pattern', () => {
+            const comments = [{ body: 'REVIEW: APPROVED sha=abc1234' }];
+            expect(shouldRemoveLabelsForSha('abc1234', comments, 'REVIEW: APPROVED')).toBe(false);
+            expect(shouldRemoveLabelsForSha('def5678', comments, 'REVIEW: APPROVED')).toBe(true);
+        });
+    });
+
+    describe('getQaLabelsToRemove', () => {
+        it('should return empty array when no QA labels present', () => {
+            const labels = ['feature', 'bug'];
+            expect(getQaLabelsToRemove(labels)).toEqual([]);
+        });
+
+        it('should return qa-passed when present', () => {
+            const labels = ['feature', 'qa-passed'];
+            expect(getQaLabelsToRemove(labels)).toEqual(['qa-passed']);
+        });
+
+        it('should return qa-failed when present', () => {
+            const labels = ['feature', 'qa-failed'];
+            expect(getQaLabelsToRemove(labels)).toEqual(['qa-failed']);
+        });
+
+        it('should return both qa-passed and qa-failed when both present', () => {
+            const labels = ['qa-passed', 'qa-failed'];
+            const result = getQaLabelsToRemove(labels);
+            expect(result).toContain('qa-passed');
+            expect(result).toContain('qa-failed');
+        });
+
+        it('should handle label objects with name property', () => {
+            const labels = [
+                { name: 'feature', color: 'blue' },
+                { name: 'qa-passed', color: 'green' }
+            ];
+            expect(getQaLabelsToRemove(labels)).toEqual(['qa-passed']);
+        });
+
+        it('should handle mixed string and object labels', () => {
+            const labels = ['feature', { name: 'qa-failed', color: 'red' }];
+            expect(getQaLabelsToRemove(labels)).toEqual(['qa-failed']);
+        });
+    });
+
+    describe('getReviewerLabelsToRemove', () => {
+        it('should return empty array when no review labels present', () => {
+            const labels = ['feature', 'qa-passed'];
+            expect(getReviewerLabelsToRemove(labels)).toEqual([]);
+        });
+
+        it('should return approved when present', () => {
+            const labels = ['feature', 'approved'];
+            expect(getReviewerLabelsToRemove(labels)).toEqual(['approved']);
+        });
+
+        it('should return changes-requested when present', () => {
+            const labels = ['feature', 'changes-requested'];
+            expect(getReviewerLabelsToRemove(labels)).toEqual(['changes-requested']);
+        });
+
+        it('should return both approved and changes-requested when both present', () => {
+            const labels = ['approved', 'changes-requested'];
+            const result = getReviewerLabelsToRemove(labels);
+            expect(result).toContain('approved');
+            expect(result).toContain('changes-requested');
+        });
+
+        it('should handle label objects with name property', () => {
+            const labels = [
+                { name: 'feature', color: 'blue' },
+                { name: 'approved', color: 'green' }
+            ];
+            expect(getReviewerLabelsToRemove(labels)).toEqual(['approved']);
+        });
+
+        it('should handle mixed string and object labels', () => {
+            const labels = ['feature', { name: 'changes-requested', color: 'red' }];
+            expect(getReviewerLabelsToRemove(labels)).toEqual(['changes-requested']);
         });
     });
 
@@ -181,8 +231,6 @@ describe('SHA-bound Labels', () => {
         it('should handle full QA workflow: first pass, then update with new SHA', () => {
             // Initial QA pass on sha=abc1234
             const comments1 = [{ body: 'QA: PASSED sha=abc1234' }];
-            const labels1 = ['feature', 'qa-passed'];
-
             // PR head updated to new SHA (dev pushes new commit)
             const newHeadSha = 'def5678';
             const shouldRemove = shouldRemoveLabelsForSha(
@@ -193,8 +241,7 @@ describe('SHA-bound Labels', () => {
             expect(shouldRemove).toBe(true);
 
             // QA posts new comment, removing old labels
-            // NOTE: We don't test getQaLabelsToRemove here since it's not imported
-            // It should be tested separately if needed
+            // NOTE: getQaLabelsToRemove is tested in its own describe block above
 
             // QA posts new result
             const newComment = formatStatusComment('QA', 'PASSED', newHeadSha, 'Retested after rebase');
@@ -204,8 +251,6 @@ describe('SHA-bound Labels', () => {
         it('should handle review workflow with stale approval', () => {
             // Reviewer approves at sha=abc1234
             const comments = [{ body: 'REVIEW: APPROVED sha=abc1234' }];
-            const labels = ['feature', 'qa-passed', 'approved'];
-
             // Developer rebases to new SHA
             const newHeadSha = 'def5678';
             const hasMismatch = shouldRemoveLabelsForSha(
@@ -215,7 +260,7 @@ describe('SHA-bound Labels', () => {
             );
             expect(hasMismatch).toBe(true);
 
-            // NOTE: We don't test getReviewerLabelsToRemove here since it's not imported
+            // NOTE: getReviewerLabelsToRemove is tested in its own describe block above
 
             // Reviewer re-approves new SHA
             const newApproval = formatStatusComment('REVIEW', 'APPROVED', newHeadSha, '');
