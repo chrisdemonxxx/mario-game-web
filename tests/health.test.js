@@ -1,3 +1,4 @@
+const { Game, HealthSystem } = require("../src/game");
 describe('Health and Game Over System', () => {
     let canvas;
     let game;
