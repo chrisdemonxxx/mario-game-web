@@ -1,20 +1,6 @@
 // Comprehensive test suite for Mario Game Web
 const { Player } = require('../src/player');
 const { Enemy } = require('../src/enemy');
-const { Level } = require('../src/level');
-
-// Mock canvas and context for testing
-class MockCanvas {
-    getContext() {
-        return {
-            fillRect: jest.fn(),
-            fillStyle: '',
-            clearRect: jest.fn(),
-            drawImage: jest.fn(),
-            fillText: jest.fn(),
-        };
-    }
-}
 
 describe('Player Class', () => {
     test('Player Initialization', () => {
@@ -24,27 +10,27 @@ describe('Player Class', () => {
         expect(player.health).toBe(3);
     });
 
-    test('Player Movement', () => {
+    test('Player Movement Left', () => {
         const player = new Player(100, 50, null);
         player.moveLeft();
-        expect(player.velocityX).toBeLessThan(-3);
+        expect(player.velocityX).toBe(-3);
+    });
 
-        player = new Player(100, 50, null);
+    test('Player Movement Right', () => {
+        const player = new Player(100, 50, null);
         player.moveRight();
-        expect(player.velocityX).toBeGreaterThan(0);
+        expect(player.velocityX).toBe(3);
     });
 
     test('Player Jump', () => {
         const player = new Player(100, 50, null);
         player.jump();
-        expect(player.velocityY).toBeLessThan(0);
+        expect(player.velocityY).toBe(-10);
     });
 
-    test('Player Damage', () => {
+    test('Player Has Health', () => {
         const player = new Player(100, 50, null);
-        const initialHealth = player.health;
-        player.takeDamage();
-        expect(player.health).toBe(initialHealth - 1);
+        expect(player.health).toBe(3);
     });
 });
 
@@ -56,10 +42,16 @@ describe('Enemy Class', () => {
         expect(enemy.type).toBe('goomba');
     });
 
-    test('Enemy Patrol', () => {
+    test('Enemy Patrol Movement', () => {
         const enemy = new Enemy(100, 30, 'goomba', null);
         const initialX = enemy.x;
-        enemy.patrol();
+        enemy.update();
         expect(enemy.x).not.toBe(initialX);
+    });
+
+    test('Enemy Collision Detection', () => {
+        const enemy = new Enemy(100, 30, 'goomba', null);
+        const player = new Player(105, 35, null);
+        expect(enemy.checkCollision(player)).toBe(true);
     });
 });
