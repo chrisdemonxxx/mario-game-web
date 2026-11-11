@@ -328,7 +328,6 @@ describe('Enemy Class - Enhanced Tests', () => {
 
     test('Enemy respawn when falling off map', () => {
         const enemy = new Enemy(100, 700);
-        const yBefore = enemy.y;
         enemy.update(0.1);
         // Check that enemy respawns or stays in bounds
         expect(enemy.y).toBeLessThan(1000);
