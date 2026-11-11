@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 class Game {
     constructor(canvas) {
         this.canvas = canvas;
