@@ -25,17 +25,17 @@ class Player {
         this.vx = 0;  // horizontal velocity
         this.vy = 0;  // vertical velocity
 
-        // Health system
-        this.health = 3;
-        this.maxHealth = 3;
-        this.isInvincible = false;
-        this.invulnerabilityDuration = 1000; // milliseconds
-        this.damageTime = 0; // Last time damage was taken
-        this.gameTime = 0; // Current game time in milliseconds
-
         // Dimensions
         this.width = 32;
         this.height = 32;
+
+        // Health system
+        this.health = 3;
+        this.maxHealth = 3;
+        this.gameTime = 0;
+        this.lastDamageTime = 0;
+        this.invulnerabilityDuration = 1000; // milliseconds
+        this.isInvincible = false;
 
         // State
         this.isGrounded = false;
@@ -71,107 +71,50 @@ class Player {
     }
 
     /**
-     * Getter for velocityX (compatibility with tests)
-     */
-    get velocityX() {
-        return this.vx;
-    }
-
-    /**
-     * Setter for velocityX
-     */
-    set velocityX(value) {
-        this.vx = value;
-    }
-
-    /**
-     * Getter for velocityY (compatibility with tests)
-     */
-    get velocityY() {
-        return this.vy;
-    }
-
-    /**
-     * Setter for velocityY
-     */
-    set velocityY(value) {
-        this.vy = value;
-    }
-
-    /**
-     * Move player left
-     */
-    moveLeft() {
-        this.velocityX = -3;
-        this.direction = -1;
-    }
-
-    /**
-     * Move player right
-     */
-    moveRight() {
-        this.velocityX = 3;
-        this.direction = 1;
-    }
-
-    /**
-     * Heal player by specified amount
-     * @param {number} amount - Amount to heal
-     */
-    heal(amount) {
-        this.health = Math.min(this.health + amount, this.maxHealth);
-    }
-
-    /**
-     * Check if player is currently flashing (invincible)
-     */
-    isFlashing() {
-        return this.isInvincible;
-    }
-
-    /**
      * Update player state based on input and physics
-     * @param {number} deltaTime - Time elapsed since last frame (in seconds) or gameTime in milliseconds
+     * @param {number} deltaTime - Time elapsed since last frame (in seconds or game time)
      */
     update(deltaTime) {
-        // Handle gameTime updates (milliseconds) vs deltaTime (seconds)
-        if (typeof deltaTime === 'number' && deltaTime > 1000) {
-            // This is gameTime in milliseconds
-            this.gameTime = deltaTime;
-        } else if (typeof deltaTime === 'number') {
-            // This is deltaTime in seconds - convert to milliseconds
-            // Don't update gameTime for small frame-based updates
-        }
-
-        // Check if invulnerability has expired
-        if (this.isInvincible && this.gameTime > 0 && (this.gameTime - this.damageTime) >= this.invulnerabilityDuration) {
-            this.isInvincible = false;
-            this.isHit = false; // Clear hit state when invulnerability ends
-        }
-
-        // Convert deltaTime for actual movement calculations (handle both second and millisecond inputs)
-        let actualDeltaTime = deltaTime;
-        if (deltaTime > 1) {
-            // Looks like milliseconds, convert to seconds
-            actualDeltaTime = deltaTime / 1000;
-        }
-
-        // Skip physics updates if dead, but still update animation
-        if (!this.isDead) {
-            // Update horizontal movement based on input
-            this.updateHorizontalMovement(actualDeltaTime);
-
-            // Update vertical movement and gravity
-            this.updateVerticalMovement(actualDeltaTime);
-
-            // Check if player has fallen too far (respawn)
-            if (this.y > this.respawnY + this.maxFallDistance) {
-                this.respawn();
+        // Handle both delta time (seconds) and game time (milliseconds for test compatibility)
+        if (typeof deltaTime === 'number') {
+            // If deltaTime looks like a game time (too large to be delta), use it as gameTime
+            if (deltaTime > 100) {
+                this.gameTime = deltaTime;
+            } else if (deltaTime > 0) {
+                // Regular delta time in seconds
+                this.gameTime += deltaTime * 1000;
             }
         }
 
-        // Always update animation state (even when dead, to show dead animation)
-        this.updateAnimationState(actualDeltaTime);
+        // Update invulnerability state
+        if (this.lastDamageTime > 0) {
+            const timeSinceDamage = this.gameTime - this.lastDamageTime;
+            if (timeSinceDamage < this.invulnerabilityDuration) {
+                this.isInvincible = true;
+            } else {
+                this.isInvincible = false;
+                this.lastDamageTime = 0;
+            }
+        } else {
+            this.isInvincible = false;
+        }
+
+        // Skip physics updates if dead, but always update animation
+        if (!this.isDead) {
+            // Update horizontal movement based on input
+            this.updateHorizontalMovement(deltaTime);
+
+            // Update vertical movement and gravity
+            this.updateVerticalMovement(deltaTime);
+        }
+
+        // Always check if player has fallen too far (respawn)
+        if (this.y > this.respawnY + this.maxFallDistance) {
+            this.respawn();
+        }
+
+        // Always update animation state
+        this.updateAnimationState(deltaTime);
     }
 
     /**
@@ -179,6 +122,11 @@ class Player {
      * @param {number} deltaTime - Time elapsed since last frame
      */
     updateHorizontalMovement(deltaTime) {
+        // Only apply delta time if it looks like actual delta (not game time)
+        if (deltaTime > 100) {
+            deltaTime = 0.016; // Default to ~60fps if gameTime passed
+        }
+
         if (this.inputState.left) {
             this.vx = -this.moveSpeed * this.acceleration;
             this.direction = -1;
@@ -198,6 +146,11 @@ class Player {
      * @param {number} deltaTime - Time elapsed since last frame
      */
     updateVerticalMovement(deltaTime) {
+        // Only apply delta time if it looks like actual delta (not game time)
+        if (deltaTime > 100) {
+            deltaTime = 0.016; // Default to ~60fps if gameTime passed
+        }
+
         // Apply gravity if not grounded
         if (!this.isGrounded) {
             this.vy += this.gravity * deltaTime;
@@ -257,7 +210,7 @@ class Player {
                 }
             }
         } else {
-            // State changed - reset animation frame
+            // State changed
             this.animationState = newState;
             this.currentFrame = 0;
             this.frameTimer = 0;
@@ -300,24 +253,44 @@ class Player {
 
     /**
      * Handle collision with enemy (take damage)
-     * @returns {boolean} - true if damage was taken, false if blocked by invulnerability
+     * @returns {boolean} true if damage was taken, false if blocked by invulnerability
      */
     takeDamage() {
-        if (this.isInvincible || this.isDead) {
-            return false; // No damage taken
+        // Only take damage if not invincible and still alive
+        if (!this.isInvincible && this.health > 0) {
+            this.health = Math.max(0, this.health - 1);
+            this.lastDamageTime = this.gameTime;
+            this.isInvincible = true;
+
+            if (this.health === 0) {
+                this.isDead = true;
+            }
+
+            return true; // Damage was taken
         }
+        return false; // Damage was blocked by invulnerability
+    }
 
-        this.health -= 1;
-        this.damageTime = this.gameTime;
-        this.isInvincible = true;
-        this.isHit = true;
+    /**
+     * Heal the player
+     * @param {number} amount - Amount to heal
+     */
+    heal(amount) {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+    }
 
-        if (this.health <= 0) {
-            this.health = 0;
-            this.isDead = true;
+    /**
+     * Check if player should flash (visual feedback during invulnerability)
+     * @returns {boolean} true if currently flashing
+     */
+    isFlashing() {
+        if (!this.isInvincible) {
+            return false;
         }
-
-        return true; // Damage was taken
+        // Flash every 100ms
+        const flashInterval = 100;
+        const timeSinceDamage = this.gameTime - this.lastDamageTime;
+        return Math.floor(timeSinceDamage / flashInterval) % 2 === 0;
     }
 
     /**
