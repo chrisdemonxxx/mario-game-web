@@ -9,7 +9,7 @@
     "lint": "eslint src/"
   },
   "devDependencies": {
-    "jest": "^29.5.0",
-    "eslint": "^8.40.0"
+    "eslint": "^8.40.0",
+    "jest": "^25.1.0"
   }
 }
