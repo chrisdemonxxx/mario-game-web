@@ -6,10 +6,17 @@ class Player {
         this.velocityX = 0;
         this.velocityY = 0;
         this.health = 3;
+        this.maxHealth = 3;
         this.width = 32;
         this.height = 32;
         this.gravity = 0.5;
         this.terminalVelocity = 15;
+        // Invulnerability system
+        this.lastDamageTime = 0;
+        this.invulnerabilityDuration = 1000;
+        this.isInvincible = false;
+        this.isDead = false;
+        this.gameTime = 0;
     }
 
     moveLeft() {
@@ -24,7 +31,22 @@ class Player {
         this.velocityY = -10;
     }
 
-    update() {
+    update(gameTime) {
+        this.gameTime = gameTime || 0;
+
+        // Update invulnerability state
+        if (this.lastDamageTime > 0) {
+            const timeSinceDamage = this.gameTime - this.lastDamageTime;
+            if (timeSinceDamage < this.invulnerabilityDuration) {
+                this.isInvincible = true;
+            } else {
+                this.isInvincible = false;
+                this.lastDamageTime = 0;
+            }
+        } else {
+            this.isInvincible = false;
+        }
+
         // Apply gravity
         this.velocityY += this.gravity;
         
@@ -46,10 +68,43 @@ class Player {
         if (this.x < 0) {
             this.x = 0;
         }
+
+        // Check if player fell off bottom
+        if (this.canvas && this.y > this.canvas.height) {
+            this.takeDamage();
+        }
     }
 
     takeDamage() {
-        this.health = Math.max(0, this.health - 1);
+        if (!this.isInvincible && this.health > 0) {
+            this.health = Math.max(0, this.health - 1);
+            this.lastDamageTime = this.gameTime;
+            this.isInvincible = true;
+
+            if (this.health === 0) {
+                this.isDead = true;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    takeInstantDeath() {
+        this.health = 0;
+        this.isDead = true;
+    }
+
+    heal(amount) {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+    }
+
+    isFlashing() {
+        if (!this.isInvincible) {
+            return false;
+        }
+        const flashInterval = 100;
+        const timeSinceDamage = this.gameTime - this.lastDamageTime;
+        return Math.floor(timeSinceDamage / flashInterval) % 2 === 0;
     }
 
     checkCollision(box1, box2) {
