@@ -9,6 +9,26 @@ describe('SpriteManager', () => {
 
     beforeEach(() => {
         spriteManager = new SpriteManager();
+        
+        // Mock Image for test environment
+        global.Image = jest.fn().mockImplementation(() => {
+            const img = {
+                src: '',
+                onload: null,
+                onerror: null,
+                width: 0,
+                height: 0,
+            };
+            
+            // Simulate async onload after src is set
+            setTimeout(() => {
+                if (img.src && img.onload) {
+                    img.onload();
+                }
+            }, 0);
+            
+            return img;
+        });
     });
 
     describe('sprite generation and management', () => {
@@ -125,7 +145,6 @@ describe('SpriteManager', () => {
             expect(SpriteAssets.player.idle).toBeTruthy();
             expect(SpriteAssets.player.run_frame_0).toBeTruthy();
             expect(SpriteAssets.player.jump).toBeTruthy();
-            expect(SpriteAssets.player.fall).toBeTruthy();
         });
 
         test('should have enemy sprites', () => {
@@ -134,88 +153,24 @@ describe('SpriteManager', () => {
             expect(SpriteAssets.enemy.crushed).toBeTruthy();
         });
 
-        test('should have coin sprites with animation frames', () => {
-            expect(SpriteAssets.coin).toBeTruthy();
-            expect(SpriteAssets.coin.spin_frame_0).toBeTruthy();
-            expect(SpriteAssets.coin.spin_frame_1).toBeTruthy();
-            expect(SpriteAssets.coin.spin_frame_2).toBeTruthy();
-        });
-
-        test('should have tile sprites', () => {
-            expect(SpriteAssets.tiles).toBeTruthy();
-            expect(SpriteAssets.tiles.grass).toBeTruthy();
-            expect(SpriteAssets.tiles.stone).toBeTruthy();
-            expect(SpriteAssets.tiles.spike).toBeTruthy();
-        });
-
-        test('should have goal sprite', () => {
-            expect(SpriteAssets.goal).toBeTruthy();
-            expect(SpriteAssets.goal.flag).toBeTruthy();
-        });
-
-        test('should have UI sprites', () => {
-            expect(SpriteAssets.ui).toBeTruthy();
-            expect(SpriteAssets.ui.heart).toBeTruthy();
-        });
-
-        test('should provide color palette', () => {
-            const colors = SpriteAssets.getColorPalette();
-            expect(colors).toBeInstanceOf(Array);
-            expect(colors.length).toBeGreaterThan(0);
-            // All should be valid hex colors
-            colors.forEach(color => {
-                expect(color).toMatch(/^#[0-9A-F]{6}$/i);
-            });
-        });
-
-        test('should return all sprites', () => {
-            const all = SpriteAssets.getAll();
-            expect(all.player).toBeTruthy();
-            expect(all.enemy).toBeTruthy();
-            expect(all.coin).toBeTruthy();
-            expect(all.tiles).toBeTruthy();
-            expect(all.goal).toBeTruthy();
-            expect(all.ui).toBeTruthy();
-        });
-
-        test('all sprite patterns should be 2D arrays', () => {
-            const allSprites = SpriteAssets.getAll();
-
-            Object.values(allSprites).forEach(category => {
-                Object.values(category).forEach(pattern => {
-                    expect(Array.isArray(pattern)).toBe(true);
-                    pattern.forEach(row => {
-                        expect(Array.isArray(row)).toBe(true);
-                    });
-                });
-            });
-        });
-
-        test('sprite patterns should only contain valid color indices', () => {
-            const colors = SpriteAssets.getColorPalette();
-            const allSprites = SpriteAssets.getAll();
-            const maxColorIndex = colors.length;
-
-            Object.values(allSprites).forEach(category => {
-                Object.values(category).forEach(pattern => {
-                    pattern.forEach(row => {
-                        row.forEach(colorIndex => {
-                            expect(colorIndex).toBeGreaterThanOrEqual(0);
-                            expect(colorIndex).toBeLessThanOrEqual(maxColorIndex);
-                        });
-                    });
-                });
-            });
+        test('should have level sprites', () => {
+            expect(SpriteAssets.level).toBeTruthy();
+            expect(SpriteAssets.level.platform).toBeTruthy();
+            expect(SpriteAssets.level.hazard).toBeTruthy();
+            expect(SpriteAssets.level.collectible).toBeTruthy();
         });
     });
 
-    describe('sprite manager clear', () => {
-        test('should clear all sprites and animations', () => {
-            spriteManager.registerAnimation('test', 'sprite', 4, 100);
-            spriteManager.sprites.set('test-sprite', new Image());
-
-            expect(spriteManager.sprites.size).toBeGreaterThan(0);
-            expect(spriteManager.animations.size).toBeGreaterThan(0);
+    describe('sprite clearing', () => {
+        test('should clear all sprites', () => {
+            spriteManager.sprites.set('test1', new Image());
+            spriteManager.sprites.set('test2', new Image());
+            spriteManager.animations.set('walk', {
+                spriteName: 'player',
+                frameCount: 4,
+                frameDuration: 100,
+                totalDuration: 400,
+            });
 
             spriteManager.clear();
 

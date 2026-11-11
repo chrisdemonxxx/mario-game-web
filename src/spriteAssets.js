@@ -98,98 +98,40 @@ const SpriteAssets = {
             [0, 0, 1, 0, 0],
             [0, 0, 0, 0, 0],
         ],
-        spin_frame_2: [
-            [0, 0, 1, 0, 0],
-            [0, 1, 1, 1, 0],
-            [0, 1, 2, 1, 0],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 0, 0],
-        ],
     },
 
     /**
-   * Tileset sprites
+   * Level elements
    */
-    tiles: {
-        grass: [
-            [1, 1, 1, 1],
-            [1, 1, 1, 1],
-            [2, 2, 2, 2],
-            [2, 2, 2, 2],
+    level: {
+        platform: [
+            [5, 5, 5, 5, 5, 5],
+            [5, 5, 5, 5, 5, 5],
+            [6, 6, 6, 6, 6, 6],
+            [6, 6, 6, 6, 6, 6],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ],
-        stone: [
-            [3, 3, 3, 3],
-            [3, 4, 4, 3],
-            [3, 4, 4, 3],
-            [3, 3, 3, 3],
+        hazard: [
+            [0, 7, 0, 7, 0, 0],
+            [7, 7, 7, 7, 7, 0],
+            [0, 7, 0, 7, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ],
-        spike: [
-            [0, 5, 0, 0],
-            [5, 5, 5, 0],
-            [0, 5, 0, 0],
-            [0, 0, 0, 0],
+        collectible: [
+            [0, 0, 8, 0, 0, 0],
+            [0, 8, 8, 8, 0, 0],
+            [0, 8, 9, 8, 0, 0],
+            [0, 8, 8, 8, 0, 0],
+            [0, 0, 8, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
         ],
-    },
-
-    /**
-   * Goal/Flag sprite
-   */
-    goal: {
-        flag: [
-            [6, 0, 0, 0],
-            [6, 6, 6, 0],
-            [6, 0, 6, 0],
-            [6, 0, 0, 0],
-            [3, 3, 3, 3],
-        ],
-    },
-
-    /**
-   * UI sprites
-   */
-    ui: {
-        heart: [
-            [0, 1, 1, 0, 1, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 0],
-            [0, 0, 1, 1, 1, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0],
-        ],
-    },
-
-    /**
-   * Get color palette (hex colors)
-   * Used consistently across all sprites
-   */
-    getColorPalette() {
-        return [
-            '#FF0000', // 1: Red (player, coin core)
-            '#0000FF', // 2: Blue (player legs, coin outer)
-            '#8B4513', // 3: Brown (enemy, goal pole)
-            '#FFD700', // 4: Gold (enemy spots, tile detail)
-            '#FF6B35', // 5: Orange (spike)
-            '#FF1493', // 6: Red (goal flag)
-        ];
-    },
-
-    /**
-   * Get all sprite patterns organized by type
-   */
-    getAll() {
-        return {
-            player: this.player,
-            enemy: this.enemy,
-            coin: this.coin,
-            tiles: this.tiles,
-            goal: this.goal,
-            ui: this.ui,
-        };
     },
 };
 
-// Export for use in sprite manager
+// Export for testing
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { SpriteAssets };
 }
