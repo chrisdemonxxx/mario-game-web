@@ -58,9 +58,9 @@ class Player {
             jump: false,
         };
 
-        // Platform collision flags
-        this.onPlatform = false;
-        this.platformVelocity = 0; // For moving platforms
+        // Jump tracking
+        this.jumpStartTime = 0;
+        this.jumpMaxDuration = 0.3;  // seconds - how long button must be held for full jump
 
         // Respawn position
         this.respawnX = x;
@@ -154,53 +154,89 @@ class Player {
         // Apply gravity if not grounded
         if (!this.isGrounded) {
             this.vy += this.gravity * deltaTime;
+
+            // Cap fall speed
             if (this.vy > this.maxFallSpeed) {
                 this.vy = this.maxFallSpeed;
             }
-            this.isFalling = true;
-        } else if (this.isFalling) {
-            this.isFalling = false;
         }
 
         // Apply vertical velocity
         this.y += this.vy * deltaTime;
+
+        // Check if still jumping (based on button hold duration)
+        if (this.isJumping && this.inputState.jump) {
+            const jumpElapsed = performance.now() / 1000 - this.jumpStartTime;
+            if (jumpElapsed > this.jumpMaxDuration) {
+                this.isJumping = false;
+            }
+        } else if (this.isJumping && !this.inputState.jump) {
+            this.isJumping = false;
+        }
     }
 
     /**
-     * Update animation based on current state
+     * Update animation state based on movement
      * @param {number} deltaTime - Time elapsed since last frame
      */
     updateAnimationState(deltaTime) {
-        // Skip animation if dead
+        let newState = 'idle';
+
         if (this.isDead) {
-            this.animationState = 'dead';
-            return;
-        }
-
-        // If hit, show hit animation
-        if (this.isHit) {
-            this.animationState = 'hit';
-            return;
-        }
-
-        // Determine base state
-        if (this.isJumping || this.isFalling) {
-            if (this.vy < 0) {
-                this.animationState = 'jumping';
-            } else {
-                this.animationState = 'falling';
-            }
+            newState = 'dead';
+        } else if (this.isHit) {
+            newState = 'hit';
+        } else if (this.isJumping || (this.vy < -50)) {
+            newState = 'jumping';
+        } else if (!this.isGrounded && this.vy > 50) {
+            newState = 'falling';
         } else if (this.vx !== 0) {
-            this.animationState = 'running';
+            newState = 'running';
         } else {
-            this.animationState = 'idle';
+            newState = 'idle';
         }
 
-        // Update frame
-        this.frameTimer += deltaTime;
-        if (this.frameTimer >= this.frameInterval) {
-            this.frameTimer -= this.frameInterval;
-            this.currentFrame = (this.currentFrame + 1) % 4; // 4 frames per animation
+        // Update animation frame
+        if (newState === this.animationState) {
+            this.frameTimer += deltaTime;
+            if (this.frameTimer >= this.frameInterval) {
+                this.frameTimer = 0;
+                if (newState === 'running') {
+                    this.currentFrame = (this.currentFrame + 1) % 3; // 3-frame run animation
+                } else if (newState === 'hit') {
+                    this.currentFrame = (this.currentFrame + 1) % 2; // 2-frame hit animation
+                } else {
+                    this.currentFrame = 0;
+                }
+            }
+        } else {
+            // State changed
+            this.animationState = newState;
+            this.currentFrame = 0;
+            this.frameTimer = 0;
+        }
+    }
+
+    /**
+     * Initiate jump
+     */
+    jump() {
+        if (!this.isGrounded) return; // Cannot jump while airborne
+
+        this.vy = -this.jumpForce;
+        this.isGrounded = false;
+        this.isJumping = true;
+        this.jumpStartTime = performance.now() / 1000;
+        this.inputState.jump = true;
+    }
+
+    /**
+     * Release jump button (for variable jump height)
+     */
+    releaseJump() {
+        this.inputState.jump = false;
+        if (this.isJumping && this.vy < 0) {
+            this.isJumping = false;
         }
     }
 
@@ -251,10 +287,10 @@ class Player {
         if (!this.isInvincible) {
             return false;
         }
-        // Flash on/off every 100ms
-        const flashPeriod = 100;
-        const cycleTime = (this.gameTime - this.lastDamageTime) % (flashPeriod * 2);
-        return cycleTime < flashPeriod;
+        // Flash every 100ms
+        const flashInterval = 100;
+        const timeSinceDamage = this.gameTime - this.lastDamageTime;
+        return Math.floor(timeSinceDamage / flashInterval) % 2 === 0;
     }
 
     /**
@@ -323,52 +359,20 @@ class Player {
 
         // Eyes
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(-this.width / 4, -this.height / 4, 6, 6);
-        ctx.fillRect(this.width / 4 - 6, -this.height / 4, 6, 6);
+        ctx.fillRect(-this.width / 6, -this.height / 4, 4, 4);
+        ctx.fillRect(this.width / 6, -this.height / 4, 4, 4);
 
-        // Pupils (animated direction)
-        ctx.fillStyle = '#000000';
-        const pupilX = this.direction === 1 ? 1 : -1;
-        ctx.fillRect(-this.width / 4 + pupilX + 1, -this.height / 4 + 1, 3, 3);
-        ctx.fillRect(this.width / 4 - 6 + pupilX + 1, -this.height / 4 + 1, 3, 3);
-
-        // Mouth (smile)
+        // Mouth
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        ctx.arc(0, 4, 3, 0.2 * Math.PI, 0.8 * Math.PI);
-    }
+        ctx.beginPath();
+        ctx.arc(0, this.height / 8, this.width / 6, 0, Math.PI);
+        ctx.stroke();
 
-    /**
-     * Move left (legacy method for backward compatibility)
-     */
-    moveLeft() {
-        this.vx = -3;
-    }
-
-    /**
-     * Move right (legacy method for backward compatibility)
-     */
-    moveRight() {
-        this.vx = 3;
-    }
-
-    /**
-     * Backward compatibility getters for old API
-     */
-    get velocityX() {
-        return this.vx;
-    }
-
-    set velocityX(value) {
-        this.vx = value;
-    }
-
-    get velocityY() {
-        return this.vy;
-    }
-
-    set velocityY(value) {
-        this.vy = value;
+        // Direction indicator
+        if (this.direction === 1) {
+            ctx.fillStyle = '#0000FF';
+            ctx.fillRect(this.width / 4, -2, 4, 4);
+        }
     }
 
     /**
@@ -381,13 +385,11 @@ class Player {
             this.inputState.left = pressed;
         } else if (direction === 'right') {
             this.inputState.right = pressed;
-        } else if (direction === 'jump') {
-            this.inputState.jump = pressed;
         }
     }
 }
 
-// Export for Node.js / Jest
+// Export for Node.js/Jest
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Player;
+    module.exports = { Player };
 }
