@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mario Game</title>
-    <style>
-        body { margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; background: #333; }
-        canvas { border: 2px solid #fff; background: #87CEEB; display: block; }
-    </style>
+    <title>Mario Game - Web Platformer</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+    </div>
     <script src="src/game.js"></script>
+    <script>
+        // Initialize game on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            if (!canvas) {
+                console.error('Canvas element not found');
+                return;
+            }
+            const game = new Game(canvas);
+            game.start();
+        });
+    </script>
 </body>
 </html>
