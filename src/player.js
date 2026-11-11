@@ -99,121 +99,16 @@ class Player {
             this.isInvincible = false;
         }
 
-        // Skip physics updates if dead, but always update animation
-        if (!this.isDead) {
-            // Update horizontal movement based on input
-            this.updateHorizontalMovement(deltaTime);
+        // Apply velocity to position
+        this.x += this.vx;
+        this.y += this.vy;
 
-            // Update vertical movement and gravity
-            this.updateVerticalMovement(deltaTime);
-        }
-
-        // Always check if player has fallen too far (respawn)
-        if (this.y > this.respawnY + this.maxFallDistance) {
-            this.respawn();
-        }
-
-        // Always update animation state
-        this.updateAnimationState(deltaTime);
-    }
-
-    /**
-     * Update horizontal movement
-     * @param {number} deltaTime - Time elapsed since last frame
-     */
-    updateHorizontalMovement(deltaTime) {
-        // Only apply delta time if it looks like actual delta (not game time)
-        if (deltaTime > 100) {
-            deltaTime = 0.016; // Default to ~60fps if gameTime passed
-        }
-
-        if (this.inputState.left) {
-            this.vx = -this.moveSpeed * this.acceleration;
-            this.direction = -1;
-        } else if (this.inputState.right) {
-            this.vx = this.moveSpeed * this.acceleration;
-            this.direction = 1;
-        } else {
-            this.vx = 0;
-        }
-
-        // Apply velocity
-        this.x += this.vx * deltaTime;
-    }
-
-    /**
-     * Update vertical movement and gravity
-     * @param {number} deltaTime - Time elapsed since last frame
-     */
-    updateVerticalMovement(deltaTime) {
-        // Only apply delta time if it looks like actual delta (not game time)
-        if (deltaTime > 100) {
-            deltaTime = 0.016; // Default to ~60fps if gameTime passed
-        }
-
-        // Apply gravity if not grounded
+        // Apply gravity
         if (!this.isGrounded) {
-            this.vy += this.gravity * deltaTime;
-
-            // Cap fall speed
+            this.vy += this.gravity * 0.016; // 0.016 ≈ 1/60 frame time
             if (this.vy > this.maxFallSpeed) {
                 this.vy = this.maxFallSpeed;
             }
-        }
-
-        // Apply vertical velocity
-        this.y += this.vy * deltaTime;
-
-        // Check if still jumping (based on button hold duration)
-        if (this.isJumping && this.inputState.jump) {
-            const jumpElapsed = performance.now() / 1000 - this.jumpStartTime;
-            if (jumpElapsed > this.jumpMaxDuration) {
-                this.isJumping = false;
-            }
-        } else if (this.isJumping && !this.inputState.jump) {
-            this.isJumping = false;
-        }
-    }
-
-    /**
-     * Update animation state based on movement
-     * @param {number} deltaTime - Time elapsed since last frame
-     */
-    updateAnimationState(deltaTime) {
-        let newState = 'idle';
-
-        if (this.isDead) {
-            newState = 'dead';
-        } else if (this.isHit) {
-            newState = 'hit';
-        } else if (this.isJumping || (this.vy < -50)) {
-            newState = 'jumping';
-        } else if (!this.isGrounded && this.vy > 50) {
-            newState = 'falling';
-        } else if (this.vx !== 0) {
-            newState = 'running';
-        } else {
-            newState = 'idle';
-        }
-
-        // Update animation frame
-        if (newState === this.animationState) {
-            this.frameTimer += deltaTime;
-            if (this.frameTimer >= this.frameInterval) {
-                this.frameTimer = 0;
-                if (newState === 'running') {
-                    this.currentFrame = (this.currentFrame + 1) % 3; // 3-frame run animation
-                } else if (newState === 'hit') {
-                    this.currentFrame = (this.currentFrame + 1) % 2; // 2-frame hit animation
-                } else {
-                    this.currentFrame = 0;
-                }
-            }
-        } else {
-            // State changed
-            this.animationState = newState;
-            this.currentFrame = 0;
-            this.frameTimer = 0;
         }
     }
 
@@ -252,36 +147,69 @@ class Player {
     }
 
     /**
+     * Move player left
+     */
+    moveLeft() {
+        this.vx = -3;
+    }
+
+    /**
+     * Move player right
+     */
+    moveRight() {
+        this.vx = 3;
+    }
+
+    /**
+     * Get velocity X (for test compatibility)
+     */
+    get velocityX() {
+        return this.vx;
+    }
+
+    /**
+     * Set velocity X (for test compatibility)
+     */
+    set velocityX(value) {
+        this.vx = value;
+    }
+
+    /**
+     * Get velocity Y (for test compatibility)
+     */
+    get velocityY() {
+        return this.vy;
+    }
+
+    /**
+     * Set velocity Y (for test compatibility)
+     */
+    set velocityY(value) {
+        this.vy = value;
+    }
+
+    /**
      * Handle collision with enemy (take damage)
      * @returns {boolean} true if damage was taken, false if blocked by invulnerability
      */
     takeDamage() {
         // Only take damage if not invincible and still alive
         if (!this.isInvincible && this.health > 0) {
-            this.health = Math.max(0, this.health - 1);
+            this.health -= 1;
             this.lastDamageTime = this.gameTime;
             this.isInvincible = true;
-
-            if (this.health === 0) {
+            if (this.health <= 0) {
                 this.isDead = true;
+                this.isHit = true;
             }
-
-            return true; // Damage was taken
+            return true;
         }
-        return false; // Damage was blocked by invulnerability
+        return false;
     }
 
     /**
-     * Heal the player
-     * @param {number} amount - Amount to heal
-     */
-    heal(amount) {
-        this.health = Math.min(this.maxHealth, this.health + amount);
-    }
-
-    /**
-     * Check if player should flash (visual feedback during invulnerability)
-     * @returns {boolean} true if currently flashing
+     * Check if player should flash (invulnerability visual)
+     * @returns {boolean} true if player should be invisible this frame
      */
     isFlashing() {
         if (!this.isInvincible) {
