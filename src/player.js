@@ -191,6 +191,13 @@ class Player {
 
         // Apply velocity
         this.x += this.vx * deltaTime;
+
+        // Clamp horizontal position to game bounds
+        if (this.x < 0) {
+            this.x = 0;
+        } else if (this.x + this.width > 800) {
+            this.x = 800 - this.width;
+        }
     }
 
     /**
