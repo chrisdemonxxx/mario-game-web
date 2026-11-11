@@ -387,6 +387,34 @@ class Player {
             this.inputState.right = pressed;
         }
     }
+
+    /**
+     * Move left (set horizontal velocity to negative)
+     */
+    moveLeft() {
+        this.vx = -3;
+    }
+
+    /**
+     * Move right (set horizontal velocity to positive)
+     */
+    moveRight() {
+        this.vx = 3;
+    }
+
+    /**
+     * Get current horizontal velocity
+     */
+    get velocityX() {
+        return this.vx;
+    }
+
+    /**
+     * Get current vertical velocity
+     */
+    get velocityY() {
+        return this.vy;
+    }
 }
 
 // Export for Node.js/Jest
