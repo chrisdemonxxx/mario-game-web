@@ -10,8 +10,10 @@ class Level {
         this.tiles = data.tiles;
         this.coins = data.coins || [];
         this.enemies = data.enemies || [];
+        this.hazards = data.hazards || [];
         this.goal = data.goal;
         this.completed = false;
+        this.inProgress = false;
     }
 
     getTile(row, col) {
@@ -25,6 +27,36 @@ class Level {
         if (row >= 0 && row < this.tiles.length && col >= 0 && col < this.tiles[0].length) {
             this.tiles[row][col] = value;
         }
+    }
+
+    // Hazard detection: check if tile contains a spike (tile type 2)
+    isHazard(row, col) {
+        return this.getTile(row, col) === 2;
+    }
+
+    // Backwards compatibility methods
+    next() {
+        return true; // Handled by LevelManager
+    }
+
+    previous() {
+        return true; // Handled by LevelManager
+    }
+
+    selectByIndex(index) {
+        return index >= 0; // Validation only
+    }
+
+    markCompleted() {
+        this.completed = true;
+    }
+
+    isCompleted() {
+        return this.completed;
+    }
+
+    isInProgress() {
+        return this.inProgress;
     }
 }
 
@@ -55,6 +87,29 @@ class LevelManager {
         return false;
     }
 
+    previousLevel() {
+        if (this.currentLevelIndex > 0) {
+            this.currentLevelIndex--;
+            return true;
+        }
+        return false;
+    }
+
+    selectByIndex(index) {
+        if (index >= 0 && index < this.levels.length) {
+            this.currentLevelIndex = index;
+            return true;
+        }
+        return false;
+    }
+
+    restartCurrentLevel() {
+        // Reset the current level's completion state
+        this.getCurrentLevel().completed = false;
+        this.getCurrentLevel().inProgress = false;
+        return true;
+    }
+
     completeLevel(score) {
         this.getCurrentLevel().completed = true;
         this.score += score;
@@ -72,10 +127,15 @@ class LevelManager {
         this.coinsCollected = 0;
         this.levels.forEach(level => {
             level.completed = false;
+            level.inProgress = false;
         });
     }
 
     getTotalLevels() {
+        return this.levels.length;
+    }
+
+    getLevelCount() {
         return this.levels.length;
     }
 

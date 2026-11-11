@@ -34,6 +34,18 @@ class UIHud {
         }
     }
 
+    renderLevel(levelNumber, totalLevels) {
+        this.ctx.fillStyle = '#000';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText(`Level: ${levelNumber}/${totalLevels}`, 10, 95);
+    }
+
+    renderRestartHint() {
+        this.ctx.fillStyle = '#666';
+        this.ctx.font = '12px Arial';
+        this.ctx.fillText('(Press R to restart)', 10, 115);
+    }
+
     renderGameOverScreen(score, reason) {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -138,6 +150,12 @@ class Game {
         this.gameOverReason = '';
     }
 
+    restartLevel() {
+        this.gameState = 'playing';
+        this.gameRunning = true;
+        this.gameTime = 0;
+    }
+
     returnToMenu() {
         this.gameState = 'menu';
         this.gameRunning = false;
@@ -151,26 +169,33 @@ class Game {
         }
     }
 
-    renderHUD() {
+    renderHUD(levelNumber = 1, totalLevels = 3) {
         this.hud.renderScore(this.score);
         this.hud.renderGameState(this.gameState);
+        this.hud.renderLevel(levelNumber, totalLevels);
+        this.hud.renderRestartHint();
     }
 
-    renderGameOverScreen() {
-        this.hud.renderGameOverScreen(this.score, this.gameOverReason);
-    }
-
-    renderWinScreen() {
-        this.hud.renderWinScreen(this.score - this.levelCompletionBonus, this.levelCompletionBonus);
-    }
-
-    addScore(points) {
-        this.score += points;
+    // Check if player hit a spike hazard (tile type 2 = spike)
+    checkHazardCollision(player, level) {
+        if (!player || !level) return false;
+        
+        const tileSize = 32;
+        const playerRow = Math.floor(player.y / tileSize);
+        const playerCol = Math.floor(player.x / tileSize);
+        
+        // Check if current tile or surrounding tiles are hazards
+        for (let row = playerRow - 1; row <= playerRow + 1; row++) {
+            for (let col = playerCol - 1; col <= playerCol + 1; col++) {
+                if (level.isHazard && level.isHazard(row, col)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 
-// eslint-disable-next-line no-undef
 if (typeof module !== 'undefined' && module.exports) {
-    // eslint-disable-next-line no-undef
     module.exports = { Game, UIHud };
 }
