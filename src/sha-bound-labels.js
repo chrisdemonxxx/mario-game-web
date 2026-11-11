@@ -11,11 +11,11 @@
  * @returns {string|null} - The 7-char SHA if found, null otherwise
  */
 function extractShaFromComment(commentBody, pattern) {
-  if (!commentBody || !commentBody.includes(pattern)) {
-    return null;
-  }
-  const match = commentBody.match(/sha=([a-f0-9]{7,40})/);
-  return match ? match[1].substring(0, 7) : null;
+    if (!commentBody || !commentBody.includes(pattern)) {
+        return null;
+    }
+    const match = commentBody.match(/sha=([a-f0-9]{7,40})/);
+    return match ? match[1].substring(0, 7) : null;
 }
 
 /**
@@ -25,84 +25,83 @@ function extractShaFromComment(commentBody, pattern) {
  * @returns {boolean} - True if they match (comparing first 7 chars)
  */
 function compareShas(sha1, sha2) {
-  if (!sha1 || !sha2) {
-    return false;
-  }
-  return sha1.substring(0, 7) === sha2.substring(0, 7);
+    if (!sha1 || !sha2) {
+        return false;
+    }
+    return sha1.substring(0, 7) === sha2.substring(0, 7);
 }
 
 /**
- * Lists comments in descending order and finds the latest that matches pattern
- * @param {array} comments - Comment array from GitHub Comments API
- * @param {string} pattern - Pattern to match, e.g., "QA: PASSED" or "REVIEW: APPROVED"
- * @returns {object|null} - The comment object if found, null otherwise
+ * Find the most recent comment with a specific pattern
+ * @param {Array} comments - Array of comment objects from GitHub API
+ * @param {string} pattern - Pattern to search for (e.g., "QA: PASSED")
+ * @returns {Object|null} - The comment object or null if not found
  */
 function findLatestCommentWithPattern(comments, pattern) {
-  if (!comments || comments.length === 0) {
-    return null;
-  }
-  for (let i = comments.length - 1; i >= 0; i--) {
-    if (comments[i].body && comments[i].body.includes(pattern)) {
-      return comments[i];
+    if (!Array.isArray(comments)) {
+        return null;
     }
-  }
-  return null;
+    
+    // Search from end to start to find most recent
+    for (let i = comments.length - 1; i >= 0; i--) {
+        if (comments[i].body && comments[i].body.includes(pattern)) {
+            return comments[i];
+        }
+    }
+    return null;
 }
 
 /**
- * Determines if labels should be removed for a given PR by checking if the PR head SHA differs from the commented SHA
+ * Determine if labels should be removed based on SHA mismatch
  * @param {string} currentHeadSha - The current PR head SHA
- * @param {array} comments - Prior comments on the PR
- * @param {string} pattern - The status pattern to match, e.g., "QA: PASSED"
- * @returns {boolean} - True if labels should be removed
+ * @param {Array} comments - PR comments
+ * @param {string} statusPattern - Pattern like "QA: PASSED" or "REVIEW: APPROVED"
+ * @returns {boolean} - True if labels should be removed (SHA mismatch)
  */
-function shouldRemoveLabelsForSha(currentHeadSha, comments, pattern) {
-  const latestComment = findLatestCommentWithPattern(comments, pattern);
-  if (!latestComment) {
-    return false;
-  }
-  const commentedSha = extractShaFromComment(latestComment.body, pattern);
-  return !compareShas(currentHeadSha, commentedSha);
+function shouldRemoveLabelsForSha(currentHeadSha, comments, statusPattern) {
+    const latestComment = findLatestCommentWithPattern(comments, statusPattern);
+    if (!latestComment) {
+        return false; // No previous status comment, so no mismatch
+    }
+    
+    const approvedSha = extractShaFromComment(latestComment.body, statusPattern);
+    if (!approvedSha) {
+        return false; // Couldn't extract SHA from old comment
+    }
+    
+    return !compareShas(currentHeadSha, approvedSha);
 }
 
 /**
- * Determines which QA labels should be removed for a given PR
- * @param {string} currentHeadSha - The current PR head SHA
- * @param {array} comments - Prior comments on the PR
- * @param {array} currentLabels - Current labels on the PR
- * @returns {array} - Label names to remove
+ * Get labels that should be removed for QA stage
+ * When QA posts a new comment, remove stale qa-passed and qa-failed labels
+ * @param {Array} currentLabels - Current PR labels
+ * @returns {Array<string>} - Labels to remove
  */
-function getQaLabelsToRemove(currentHeadSha, comments, currentLabels) {
-  if (!shouldRemoveLabelsForSha(currentHeadSha, comments, 'QA: PASSED')) {
-    return [];
-  }
-  const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
-  const toRemove = [];
-
-  if (labelNames.includes('qa-passed')) toRemove.push('qa-passed');
-  if (labelNames.includes('qa-failed')) toRemove.push('qa-failed');
-
-  return toRemove;
+function getQaLabelsToRemove(currentLabels) {
+    const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
+    const toRemove = [];
+    
+    if (labelNames.includes('qa-passed')) toRemove.push('qa-passed');
+    if (labelNames.includes('qa-failed')) toRemove.push('qa-failed');
+    
+    return toRemove;
 }
 
 /**
- * Determines which Reviewer labels should be removed for a given PR
- * @param {string} currentHeadSha - The current PR head SHA
- * @param {array} comments - Prior comments on the PR
- * @param {array} currentLabels - Current labels on the PR
- * @returns {array} - Label names to remove
+ * Get labels that should be removed for Reviewer stage
+ * When head SHA differs from last approval, remove approval-related labels
+ * @param {Array} currentLabels - Current PR labels
+ * @returns {Array<string>} - Labels to remove
  */
-function getReviewerLabelsToRemove(currentHeadSha, comments, currentLabels) {
-  if (!shouldRemoveLabelsForSha(currentHeadSha, comments, 'REVIEW: APPROVED')) {
-    return [];
-  }
-  const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
-  const toRemove = [];
-
-  if (labelNames.includes('approved')) toRemove.push('approved');
-  if (labelNames.includes('changes-requested')) toRemove.push('changes-requested');
-
-  return toRemove;
+function getReviewerLabelsToRemove(currentLabels) {
+    const labelNames = currentLabels.map(l => typeof l === 'string' ? l : l.name);
+    const toRemove = [];
+    
+    if (labelNames.includes('approved')) toRemove.push('approved');
+    if (labelNames.includes('changes-requested')) toRemove.push('changes-requested');
+    
+    return toRemove;
 }
 
 /**
@@ -114,22 +113,22 @@ function getReviewerLabelsToRemove(currentHeadSha, comments, currentLabels) {
  * @returns {string} - Formatted comment body
  */
 function formatStatusComment(statusType, result, sha, details = '') {
-  const shortSha = sha.substring(0, 7);
-  let body = `${statusType}: ${result} sha=${shortSha}`;
-  if (details) {
-    body += `\n\n${details}`;
-  }
-  return body;
+    const shortSha = sha.substring(0, 7);
+    let body = `${statusType}: ${result} sha=${shortSha}`;
+    if (details) {
+        body += `\n\n${details}`;
+    }
+    return body;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    extractShaFromComment,
-    compareShas,
-    findLatestCommentWithPattern,
-    shouldRemoveLabelsForSha,
-    getQaLabelsToRemove,
-    getReviewerLabelsToRemove,
-    formatStatusComment,
-  };
+    module.exports = {
+        extractShaFromComment,
+        compareShas,
+        findLatestCommentWithPattern,
+        shouldRemoveLabelsForSha,
+        getQaLabelsToRemove,
+        getReviewerLabelsToRemove,
+        formatStatusComment,
+    };
 }
