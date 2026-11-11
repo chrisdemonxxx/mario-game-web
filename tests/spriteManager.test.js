@@ -19,9 +19,9 @@ describe('SpriteManager', () => {
         [1, 1, 1],
       ];
       const colors = ['#FF0000', '#00FF00'];
-      
+
       const dataUrl = spriteManager.generatePixelSprite('test', 30, 30, colors, pattern);
-      
+
       expect(dataUrl).toBeTruthy();
       expect(dataUrl).toMatch(/^data:image\/png/);
     });
@@ -30,7 +30,7 @@ describe('SpriteManager', () => {
       const colors = ['#FF0000'];
       const pattern = [[1]];
       const dataUrl = spriteManager.generatePixelSprite('test', 8, 8, colors, pattern);
-      
+
       spriteManager.loadSprite('test-sprite', dataUrl).then(() => {
         expect(spriteManager.getSprite('test-sprite')).toBeTruthy();
         done();
@@ -40,8 +40,7 @@ describe('SpriteManager', () => {
     test('should get sprite by name', () => {
       const colors = ['#FF0000'];
       const pattern = [[1]];
-      const dataUrl = spriteManager.generatePixelSprite('test', 8, 8, colors, pattern);
-      
+
       spriteManager.sprites.set('test', new Image());
       const sprite = spriteManager.getSprite('test');
       expect(sprite).toBeTruthy();
@@ -57,7 +56,7 @@ describe('SpriteManager', () => {
     test('should register an animation', () => {
       spriteManager.registerAnimation('walk', 'player', 4, 100);
       const animation = spriteManager.animations.get('walk');
-      
+
       expect(animation).toBeTruthy();
       expect(animation.frameCount).toBe(4);
       expect(animation.frameDuration).toBe(100);
@@ -66,16 +65,16 @@ describe('SpriteManager', () => {
 
     test('should calculate current animation frame', () => {
       spriteManager.registerAnimation('walk', 'player', 4, 100);
-      
+
       // At 0ms, should be frame 0
       expect(spriteManager.getAnimationFrame('walk', 0)).toBe(0);
-      
+
       // At 150ms, should be frame 1
       expect(spriteManager.getAnimationFrame('walk', 150)).toBe(1);
-      
+
       // At 300ms, should be frame 3
       expect(spriteManager.getAnimationFrame('walk', 300)).toBe(3);
-      
+
       // After cycle completes, should loop back to frame 0
       expect(spriteManager.getAnimationFrame('walk', 400)).toBe(0);
       expect(spriteManager.getAnimationFrame('walk', 500)).toBe(1);
@@ -93,11 +92,11 @@ describe('SpriteManager', () => {
       canvas.width = 64;
       canvas.height = 64;
       const ctx = canvas.getContext('2d');
-      
+
       // Mock image
       const mockImg = new Image();
       spriteManager.sprites.set('test', mockImg);
-      
+
       // Should not throw error
       expect(() => spriteManager.renderSprite(ctx, 'test', 10, 10, 32, 32)).not.toThrow();
     });
@@ -107,18 +106,18 @@ describe('SpriteManager', () => {
       canvas.width = 64;
       canvas.height = 64;
       const ctx = canvas.getContext('2d');
-      
+
       spriteManager.registerAnimation('test-anim', 'test', 2, 50);
       spriteManager.sprites.set('test_frame_0', new Image());
       spriteManager.sprites.set('test_frame_1', new Image());
-      
+
       expect(() => spriteManager.renderAnimation(ctx, 'test-anim', 0, 10, 10, 32, 32)).not.toThrow();
     });
 
     test('should not render if animation does not exist', () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
+
       expect(() => spriteManager.renderAnimation(ctx, 'non-existent', 0, 10, 10, 32, 32)).not.toThrow();
     });
   });
@@ -184,7 +183,7 @@ describe('SpriteManager', () => {
 
     test('all sprite patterns should be 2D arrays', () => {
       const allSprites = SpriteAssets.getAll();
-      
+
       Object.values(allSprites).forEach(category => {
         Object.values(category).forEach(pattern => {
           expect(Array.isArray(pattern)).toBe(true);
@@ -199,7 +198,7 @@ describe('SpriteManager', () => {
       const colors = SpriteAssets.getColorPalette();
       const allSprites = SpriteAssets.getAll();
       const maxColorIndex = colors.length;
-      
+
       Object.values(allSprites).forEach(category => {
         Object.values(category).forEach(pattern => {
           pattern.forEach(row => {
@@ -217,12 +216,12 @@ describe('SpriteManager', () => {
     test('should clear all sprites and animations', () => {
       spriteManager.registerAnimation('test', 'sprite', 4, 100);
       spriteManager.sprites.set('test-sprite', new Image());
-      
+
       expect(spriteManager.sprites.size).toBeGreaterThan(0);
       expect(spriteManager.animations.size).toBeGreaterThan(0);
-      
+
       spriteManager.clear();
-      
+
       expect(spriteManager.sprites.size).toBe(0);
       expect(spriteManager.animations.size).toBe(0);
     });
