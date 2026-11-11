@@ -38,9 +38,6 @@ describe('SpriteManager', () => {
     });
 
     test('should get sprite by name', () => {
-      const colors = ['#FF0000'];
-      const pattern = [[1]];
-
       spriteManager.sprites.set('test', new Image());
       const sprite = spriteManager.getSprite('test');
       expect(sprite).toBeTruthy();
