@@ -7,22 +7,34 @@ class Enemy {
      * Create an enemy
      * @param {number} x - Starting x position
      * @param {number} y - Starting y position
-     * @param {Object} options - Configuration object
-     * @param {number} options.speed - Patrol speed (pixels/second)
-     * @param {number} options.patrolDistance - How far to patrol in each direction
-     * @param {number} options.width - Enemy width (pixels)
-     * @param {number} options.height - Enemy height (pixels)
+     * @param {string|Object} typeOrOptions - Enemy type (string) or configuration object
+     * @param {Object} graphics - Graphics object (legacy parameter)
      */
-    constructor(x, y, options = {}) {
+    constructor(x, y, typeOrOptions = {}, graphics = null) {
         this.x = x;
         this.y = y;
-        this.width = options.width || 16;
-        this.height = options.height || 16;
+        this.graphics = graphics;
         
-        this.speed = options.speed || 80; // pixels/second
+        // Handle both old (type, graphics) and new (options) signatures
+        if (typeof typeOrOptions === 'string') {
+            // Old signature: new Enemy(x, y, 'goomba', graphics)
+            this.type = typeOrOptions;
+            this.width = 16;
+            this.height = 16;
+            this.speed = 80;
+            this.patrolDistance = 200;
+        } else {
+            // New signature: new Enemy(x, y, options)
+            const options = typeOrOptions || {};
+            this.type = options.type || 'goomba';
+            this.width = options.width || 16;
+            this.height = options.height || 16;
+            this.speed = options.speed || 80;
+            this.patrolDistance = options.patrolDistance || 200;
+        }
+        
         this.direction = 1; // 1 = right, -1 = left
         this.patrolStart = x;
-        this.patrolDistance = options.patrolDistance || 200;
         
         this.state = 'walking'; // 'walking' | 'crushed' | 'dead'
         this.hp = 1; // 1 HP = alive, 0 HP = dead
@@ -32,9 +44,9 @@ class Enemy {
 
     /**
      * Update enemy position and state
-     * @param {number} dt - Delta time in seconds
+     * @param {number} dt - Delta time in seconds (optional, defaults to 1/60)
      */
-    update(dt) {
+    update(dt = 1 / 60) {
         if (this.state === 'walking') {
             // Move in current direction
             this.x += this.direction * this.speed * dt;
@@ -55,6 +67,16 @@ class Enemy {
                 this.hp = 0;
             }
         }
+    }
+
+    /**
+     * Check if this enemy collides with another object (legacy method for game.test.js)
+     * @param {Object} other - Other object with x, y, width, height properties
+     * @returns {boolean} True if colliding
+     */
+    checkCollision(other) {
+        if (!other) return false;
+        return this.isCollidingWith(other.x, other.y, other.width, other.height);
     }
 
     /**
@@ -202,5 +224,5 @@ class Enemy {
 
 // Export for Node.js/Jest
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Enemy;
+    module.exports = { Enemy };
 }

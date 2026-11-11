@@ -2,7 +2,7 @@
  * Tests for Enemy class and collision detection
  */
 
-const Enemy = require('../src/enemy');
+const { Enemy } = require('../src/enemy');
 
 describe('Enemy', () => {
     describe('initialization', () => {
