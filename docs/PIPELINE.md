@@ -43,3 +43,56 @@ Lint errors are a hard fail. Coverage ≥ 60 % lines for new modules is the soft
 5. Create feature issues with acceptance criteria and `Depends on #N`.
 6. Confirm the Railway project exists and is linked to the default branch; otherwise open a `blocked` issue naming what is needed and message Chief.
 7. `message_bot` Builder with the issue list.
+
+## Monitoring and Alerting (Sentinel / Chief)
+
+The pipeline health is monitored automatically by Sentinel every 30 minutes (or on CI trigger). The monitoring detects queue age and blocked items, generating alerts when thresholds are exceeded.
+
+### Queue States Monitored
+- **QA Pending**: Feature PRs with no QA comment yet (`feature` label, no `qa-passed`/`qa-failed`)
+- **QA Failed**: PRs with `qa-failed` label (needs builder fix)
+- **Changes Requested**: PRs with `changes-requested` label (needs builder action)
+- **Approved Not Merged**: PRs with `approved` label but `merged_at` is null (ready to ship)
+- **Blocked Issues**: Issues with `blocked` label (awaiting external action)
+
+### Alert Thresholds
+- **Green** (✅): Age < 24 hours — no action needed
+- **Yellow** (⚠️): Age 24–48 hours — monitor closely
+- **Red** (🔴): Age > 48 hours — escalate to Chief
+
+### Alert Content
+Each alert includes:
+- Item type (PR # or Issue #) with link
+- Title
+- Age in hours
+- Current status (QA Failed, Changes Requested, etc.)
+- Evidence (timestamps, last relevant comment, reason)
+- Alert level (green/yellow/red)
+
+### Sentinel Routine
+Sentinel runs the following steps each check:
+1. Fetch all open PRs and comments via `GITHUB_LIST_PULL_REQUESTS` (paginated, per_page=100)
+2. Fetch all open issues and comments via `GITHUB_LIST_REPOSITORY_ISSUES` (paginated, per_page=100)
+3. Call `getQueueHealthSummary()` to compile queue state with thresholds
+4. If any red-level items found (> 48h old):
+   - Message Chief: `{red_count} items blocked 48h+ (e.g., #22 qa-failed, #24 changes-requested): {links}`
+5. Create or update a monitoring issue (e.g., `#999 Pipeline Queue Health`) with a table:
+   ```
+   | Item | Age | Status | Link | Level |
+   |---|---|---|---|---|
+   | #22 | 52h | QA Failed | [link] | 🔴 |
+   | #24 | 36h | Changes Requested | [link] | ⚠️ |
+   ```
+6. Comment reasons for blocked items (if `Blocked:` label present, include reason from last comment)
+
+### Idempotent Alerting
+- Sentinel never creates duplicate alert issues; it updates the existing monitoring issue with latest data
+- Sentinel does not re-message Chief if alert state hasn't changed (same items with same ages)
+- Silent when all items are green (✅)
+
+### Integration with Builder / Blocker Workflow
+When an item is labeled `blocked`:
+1. The most recent comment should start with `Blocked:` and explain the reason
+   - Example: `Blocked: Waiting for QA (qa-failed since 36h ago)` or `Blocked: Waiting for Railway project setup`
+2. Sentinel includes this reason text in alerts and monitoring issues
+3. If the blocking reason is cleared (e.g., QA passes), Builder or responsible actor removes the `blocked` label
