@@ -9,4 +9,20 @@ class Game {
     start() {
         console.log('Game started');
     }
+
+    collectCoin() {
+        this.score += 10;
+    }
+
+    completeLevel() {
+        this.score += 500;
+    }
+
+    nextLevel() {
+        // Score persists
+    }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Game };
 }
