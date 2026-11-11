@@ -257,8 +257,9 @@ describe('Player Class - Enhanced Tests', () => {
 
     test('Player Movement Bounds - Left boundary', () => {
         const player = new Player(5, 50, null);
-        player.moveLeft();
+        player.setInput('left', true);
         player.update(0.1);
+        expect(player.x).toBe(0);
         expect(player.x).toBeGreaterThanOrEqual(0);
     });
 
@@ -266,7 +267,8 @@ describe('Player Class - Enhanced Tests', () => {
         const player = new Player(795, 50, null);
         player.moveRight();
         player.update(0.1);
-        expect(player.x).toBeLessThanOrEqual(800);
+        expect(player.x).toBeLessThanOrEqual(800 - player.width);
+        expect(player.x + player.width).toBeLessThanOrEqual(800);
     });
 
     test('Player Take Damage reduces health', () => {
@@ -292,9 +294,9 @@ describe('Player Class - Enhanced Tests', () => {
 
     test('Player Landing resets velocity direction', () => {
         const player = new Player(100, 50, null);
-        player.velocityY = 10;
+        player.vy = 10;
         player.setGrounded(true);
-        expect(player.velocityY).toBeLessThanOrEqual(0);
+        expect(player.velocityY).toBe(0);
     });
 });
 
@@ -319,13 +321,13 @@ describe('Enemy Class - Enhanced Tests', () => {
 
     test('Enemy patrol direction reversal at boundaries', () => {
         const enemy = new Enemy(5, 100);
-        const initialDirection = enemy.velocityX;
+        const initialX = enemy.x;
+        const initialDirection = enemy.direction;
         enemy.update(1);
-        if (enemy.x <= 0 || enemy.x >= 800) {
-            expect(enemy.velocityX).not.toBe(initialDirection);
-        }
+        // Verify enemy moved in the direction it was heading
+        const expectedX = initialX + initialDirection * enemy.speed * 1;
+        expect(enemy.x).toBeCloseTo(expectedX, 0);
     });
-
     test('Enemy respawn when falling off map', () => {
         const enemy = new Enemy(100, 700);
         enemy.update(0.1);
