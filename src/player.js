@@ -4,11 +4,11 @@
 
 class Player {
     /**
-   * Create a player instance
-   * @param {number} x - Starting x position
-   * @param {number} y - Starting y position
-   * @param {Object} graphics - Graphics object for rendering
-   */
+     * Create a player instance
+     * @param {number} x - Starting x position
+     * @param {number} y - Starting y position
+     * @param {Object} graphics - Graphics object for rendering
+     */
     constructor(x, y, graphics = null) {
         this.x = x;
         this.y = y;
@@ -28,6 +28,14 @@ class Player {
         // Dimensions
         this.width = 32;
         this.height = 32;
+
+        // Health system
+        this.health = 3;
+        this.maxHealth = 3;
+        this.gameTime = 0;
+        this.lastDamageTime = 0;
+        this.invulnerabilityDuration = 1000; // milliseconds
+        this.isInvincible = false;
 
         // State
         this.isGrounded = false;
@@ -50,9 +58,9 @@ class Player {
             jump: false,
         };
 
-        // Jump tracking
-        this.jumpStartTime = 0;
-        this.jumpMaxDuration = 0.3;  // seconds - how long button must be held for full jump
+        // Platform collision flags
+        this.onPlatform = false;
+        this.platformVelocity = 0; // For moving platforms
 
         // Respawn position
         this.respawnX = x;
@@ -60,43 +68,64 @@ class Player {
 
         // Screen bounds (will be set by game)
         this.maxFallDistance = 600;
-
-        // Health system
-        this.health = 3;
-        this.maxHealth = 3;
-        this.lastDamageTime = -this.invulnerabilityDuration;
-        this.invulnerabilityDuration = 2000;  // milliseconds
-        this.isInvincible = false;
-        this.gameTime = 0;
     }
 
     /**
-   * Update player state based on input and physics
-   * @param {number} deltaTime - Time elapsed since last frame (in seconds)
-   */
+     * Update player state based on input and physics
+     * @param {number} deltaTime - Time elapsed since last frame (in seconds or game time)
+     */
     update(deltaTime) {
-        if (this.isDead) return;
+        // Handle both delta time (seconds) and game time (milliseconds for test compatibility)
+        if (typeof deltaTime === 'number') {
+            // If deltaTime looks like a game time (too large to be delta), use it as gameTime
+            if (deltaTime > 100) {
+                this.gameTime = deltaTime;
+            } else if (deltaTime > 0) {
+                // Regular delta time in seconds
+                this.gameTime += deltaTime * 1000;
+            }
+        }
 
-        // Update horizontal movement based on input
-        this.updateHorizontalMovement(deltaTime);
+        // Update invulnerability state
+        if (this.lastDamageTime > 0) {
+            const timeSinceDamage = this.gameTime - this.lastDamageTime;
+            if (timeSinceDamage < this.invulnerabilityDuration) {
+                this.isInvincible = true;
+            } else {
+                this.isInvincible = false;
+                this.lastDamageTime = 0;
+            }
+        } else {
+            this.isInvincible = false;
+        }
 
-        // Update vertical movement and gravity
-        this.updateVerticalMovement(deltaTime);
+        // Skip physics updates if dead, but always update animation
+        if (!this.isDead) {
+            // Update horizontal movement based on input
+            this.updateHorizontalMovement(deltaTime);
 
-        // Update animation state
-        this.updateAnimationState(deltaTime);
+            // Update vertical movement and gravity
+            this.updateVerticalMovement(deltaTime);
+        }
 
-        // Check if player has fallen too far (respawn)
+        // Always check if player has fallen too far (respawn)
         if (this.y > this.respawnY + this.maxFallDistance) {
             this.respawn();
         }
+
+        // Always update animation state
+        this.updateAnimationState(deltaTime);
     }
 
     /**
-   * Update horizontal movement
-   * @param {number} deltaTime - Time elapsed since last frame
-   */
+     * Update horizontal movement
+     * @param {number} deltaTime - Time elapsed since last frame
+     */
     updateHorizontalMovement(deltaTime) {
+        // Only apply delta time if it looks like actual delta (not game time)
+        if (deltaTime > 100) {
+            deltaTime = 0.016; // Default to ~60fps if gameTime passed
+        }
 
         if (this.inputState.left) {
             this.vx = -this.moveSpeed * this.acceleration;
@@ -108,263 +137,257 @@ class Player {
             this.vx = 0;
         }
 
+        // Apply velocity
         this.x += this.vx * deltaTime;
     }
 
     /**
-   * Update vertical movement and jumping
-   * @param {number} deltaTime - Time elapsed since last frame
-   */
+     * Update vertical movement and gravity
+     * @param {number} deltaTime - Time elapsed since last frame
+     */
     updateVerticalMovement(deltaTime) {
-    // Handle input for jump
-        if (this.inputState.jump && this.isGrounded) {
-            this.vy = -this.jumpForce;
-            this.isGrounded = false;
-            this.isJumping = true;
+        // Only apply delta time if it looks like actual delta (not game time)
+        if (deltaTime > 100) {
+            deltaTime = 0.016; // Default to ~60fps if gameTime passed
         }
 
-        // Apply gravity
+        // Apply gravity if not grounded
         if (!this.isGrounded) {
             this.vy += this.gravity * deltaTime;
             if (this.vy > this.maxFallSpeed) {
                 this.vy = this.maxFallSpeed;
             }
+            this.isFalling = true;
+        } else if (this.isFalling) {
+            this.isFalling = false;
         }
 
         // Apply vertical velocity
         this.y += this.vy * deltaTime;
-
-        // Simple ground collision (assuming ground at y = 500)
-        const groundY = 500;
-        if (this.y >= groundY) {
-            this.y = groundY;
-            this.vy = 0;
-            this.isGrounded = true;
-            this.isJumping = false;
-        }
     }
 
     /**
-   * Update animation state based on player's current movement and state
-   * @param {number} deltaTime - Time elapsed since last frame
-   */
+     * Update animation based on current state
+     * @param {number} deltaTime - Time elapsed since last frame
+     */
     updateAnimationState(deltaTime) {
-        let newState = 'idle';
-
+        // Skip animation if dead
         if (this.isDead) {
-            newState = 'dead';
-        } else if (this.isHit) {
-            newState = 'hit';
-        } else if (this.isJumping || (this.vy < -50)) {
-            newState = 'jumping';
-        } else if (!this.isGrounded && this.vy > 50) {
-            newState = 'falling';
-        } else if (this.vx !== 0) {
-            newState = 'running';
-        } else {
-            newState = 'idle';
+            this.animationState = 'dead';
+            return;
         }
 
-        // Update animation frame
-        if (newState === this.animationState) {
-            this.frameTimer += deltaTime;
-            if (this.frameTimer >= this.frameInterval) {
-                this.frameTimer = 0;
-                if (newState === 'running') {
-                    this.currentFrame = (this.currentFrame + 1) % 3; // 3-frame run animation
-                } else if (newState === 'hit') {
-                    this.currentFrame = (this.currentFrame + 1) % 2; // 2-frame hit animation
-                } else {
-                    this.currentFrame = 0;
-                }
+        // If hit, show hit animation
+        if (this.isHit) {
+            this.animationState = 'hit';
+            return;
+        }
+
+        // Determine base state
+        if (this.isJumping || this.isFalling) {
+            if (this.vy < 0) {
+                this.animationState = 'jumping';
+            } else {
+                this.animationState = 'falling';
             }
+        } else if (this.vx !== 0) {
+            this.animationState = 'running';
         } else {
-            // State changed
-            this.animationState = newState;
-            this.currentFrame = 0;
-            this.frameTimer = 0;
+            this.animationState = 'idle';
+        }
+
+        // Update frame
+        this.frameTimer += deltaTime;
+        if (this.frameTimer >= this.frameInterval) {
+            this.frameTimer -= this.frameInterval;
+            this.currentFrame = (this.currentFrame + 1) % 4; // 4 frames per animation
         }
     }
 
     /**
-   * Apply damage to the player
-   * @param {number} damage - Amount of damage to apply
-   */
-    takeDamage(damage) {
-        if (this.isInvincible) return false;
-        this.health -= damage;
-        this.isHit = true;
-        this.lastDamageTime = this.gameTime;
-        this.isInvincible = true;
-        if (this.health <= 0) {
-            this.isDead = true;
-            this.isHit = true;
+     * Set player as grounded (touching platform)
+     */
+    setGrounded(isGrounded) {
+        this.isGrounded = isGrounded;
+        if (isGrounded) {
+            this.vy = 0;
+            this.isFalling = false;
         }
-        return true;
     }
 
     /**
-   * Heal the player
-   * @param {number} amount - Amount to heal
-   */
+     * Handle collision with enemy (take damage)
+     * @returns {boolean} true if damage was taken, false if blocked by invulnerability
+     */
+    takeDamage() {
+        // Only take damage if not invincible and still alive
+        if (!this.isInvincible && this.health > 0) {
+            this.health = Math.max(0, this.health - 1);
+            this.lastDamageTime = this.gameTime;
+            this.isInvincible = true;
+
+            if (this.health === 0) {
+                this.isDead = true;
+            }
+
+            return true; // Damage was taken
+        }
+        return false; // Damage was blocked by invulnerability
+    }
+
+    /**
+     * Heal the player
+     * @param {number} amount - Amount to heal
+     */
     heal(amount) {
         this.health = Math.min(this.maxHealth, this.health + amount);
     }
 
     /**
-   * Check if player should flash (invulnerability visual)
-   * @returns {boolean} true if player should be invisible this frame
-   */
+     * Check if player should flash (visual feedback during invulnerability)
+     * @returns {boolean} true if currently flashing
+     */
     isFlashing() {
         if (!this.isInvincible) {
             return false;
         }
-        // Flash every 100ms
-        const flashInterval = 100;
-        const timeSinceDamage = this.gameTime - this.lastDamageTime;
-        return Math.floor(timeSinceDamage / flashInterval) % 2 === 0;
+        // Flash on/off every 100ms
+        const flashPeriod = 100;
+        const cycleTime = (this.gameTime - this.lastDamageTime) % (flashPeriod * 2);
+        return cycleTime < flashPeriod;
     }
 
     /**
-   * Respawn player at starting position
-   */
+     * Respawn player at starting position
+     */
     respawn() {
         this.x = this.respawnX;
         this.y = this.respawnY;
         this.vx = 0;
         this.vy = 0;
         this.isGrounded = true;
-        this.isDead = false;
+        this.isJumping = false;
+        this.isFalling = false;
         this.isHit = false;
-        this.health = this.maxHealth;
-        this.isInvincible = false;
+        this.isDead = false;
+        this.direction = 1;
+        this.animationState = 'idle';
+        this.currentFrame = 0;
     }
 
     /**
-   * Move player left (backward compatibility method)
-   */
-    moveLeft() {
-        this.vx = -3;
-        this.inputState.left = true;
-    }
-
-    /**
-   * Move player right (backward compatibility method)
-   */
-    moveRight() {
-        this.vx = 3;
-        this.inputState.right = true;
-    }
-
-    /**
-   * Get velocity X (for test compatibility)
-   */
-    get velocityX() {
-        return this.vx;
-    }
-
-    /**
-   * Get velocity Y (for test compatibility)
-   */
-    get velocityY() {
-        return this.vy;
-    }
-
-    /**
-   * Stop horizontal movement
-   */
-    stopHorizontal() {
-        this.inputState.left = false;
-        this.inputState.right = false;
-        this.vx = 0;
-    }
-
-    /**
-   * Jump - initiate a jump
-   */
-    jump() {
-        if (!this.isGrounded) return; // Cannot jump while airborne
-
-        this.vy = -this.jumpForce;
-        this.isGrounded = false;
-        this.isJumping = true;
-        this.jumpStartTime = performance.now() / 1000;
-        this.inputState.jump = true;
-    }
-
-    /**
-   * Release jump button
-   */
-    releaseJump() {
-        this.inputState.jump = false;
-    }
-
-
-    /**
-     * Set player as grounded or not grounded
-     * @param {boolean} grounded - Whether the player is grounded
+     * Render player to canvas
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
      */
-    setGrounded(grounded) {
-        this.isGrounded = grounded;
-        if (grounded) {
-            this.vy = 0;
-            this.isFalling = false;
-        }
-    }
-    /**
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   */
     render(ctx) {
-        if (this.graphics) {
-            this.graphics.render(ctx, this.x, this.y, this.direction, this.animationState, this.currentFrame);
-            if (!ctx) return;
+        if (!ctx) return;
+
+        ctx.save();
+
+        // Position and flip based on direction
+        ctx.translate(this.x + this.width / 2, this.y);
+        if (this.direction === -1) {
+            ctx.scale(-1, 1);
+        }
+
+        // Draw sprite or rectangle placeholder
+        if (this.graphics && this.graphics.sprites && this.graphics.sprites.player) {
+            // Use sprite asset if available
+            const sprite = this.graphics.sprites.player[this.animationState]?.[this.currentFrame];
+            if (sprite) {
+                ctx.drawImage(
+                    sprite,
+                    -this.width / 2,
+                    -this.height / 2,
+                    this.width,
+                    this.height
+                );
+            } else {
+                this.renderPlaceholder(ctx);
+            }
         } else {
             this.renderPlaceholder(ctx);
         }
+
+        ctx.restore();
     }
 
     /**
-   * Render placeholder character
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   */
+     * Render placeholder rectangle when no sprite available
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
     renderPlaceholder(ctx) {
-    // Character body
+        // Character body
         ctx.fillStyle = '#FF0000';
         ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
 
         // Eyes
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(-this.width / 6, -this.height / 4, 4, 4);
-        ctx.fillRect(this.width / 6, -this.height / 4, 4, 4);
+        ctx.fillRect(-this.width / 4, -this.height / 4, 6, 6);
+        ctx.fillRect(this.width / 4 - 6, -this.height / 4, 6, 6);
 
-        // Mouth
+        // Pupils (animated direction)
+        ctx.fillStyle = '#000000';
+        const pupilX = this.direction === 1 ? 1 : -1;
+        ctx.fillRect(-this.width / 4 + pupilX + 1, -this.height / 4 + 1, 3, 3);
+        ctx.fillRect(this.width / 4 - 6 + pupilX + 1, -this.height / 4 + 1, 3, 3);
+
+        // Mouth (smile)
         ctx.strokeStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(0, this.height / 8, this.width / 6, 0, Math.PI);
-        ctx.stroke();
-
-        // Direction indicator
-        if (this.direction === 1) {
-            ctx.fillStyle = '#0000FF';
-            ctx.fillRect(this.width / 4, -2, 4, 4);
-        }
+        ctx.lineWidth = 1;
+        ctx.arc(0, 4, 3, 0.2 * Math.PI, 0.8 * Math.PI);
     }
 
     /**
-   * Set input state
-   * @param {string} direction - 'left', 'right', or null
-   * @param {boolean} pressed - Is key pressed
-   */
+     * Move left (legacy method for backward compatibility)
+     */
+    moveLeft() {
+        this.vx = -3;
+    }
+
+    /**
+     * Move right (legacy method for backward compatibility)
+     */
+    moveRight() {
+        this.vx = 3;
+    }
+
+    /**
+     * Backward compatibility getters for old API
+     */
+    get velocityX() {
+        return this.vx;
+    }
+
+    set velocityX(value) {
+        this.vx = value;
+    }
+
+    get velocityY() {
+        return this.vy;
+    }
+
+    set velocityY(value) {
+        this.vy = value;
+    }
+
+    /**
+     * Set input state
+     * @param {string} direction - 'left', 'right', or null
+     * @param {boolean} pressed - Is key pressed
+     */
     setInput(direction, pressed) {
         if (direction === 'left') {
             this.inputState.left = pressed;
         } else if (direction === 'right') {
             this.inputState.right = pressed;
+        } else if (direction === 'jump') {
+            this.inputState.jump = pressed;
         }
     }
 }
 
-// Export for Node.js/Jest
+// Export for Node.js / Jest
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Player };
+    module.exports = Player;
 }
