@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -25,6 +26,8 @@ class Game {
 }
 
 // Export for Jest (CommonJS) while staying usable as a plain <script> in the browser.
+// eslint-disable-next-line no-undef
 if (typeof module !== 'undefined' && module.exports) {
+    // eslint-disable-next-line no-undef
     module.exports = { Game };
 }
