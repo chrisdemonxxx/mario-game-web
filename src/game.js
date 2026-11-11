@@ -30,7 +30,7 @@ class Game {
         this.ctx = canvas.getContext('2d');
         this.score = 0;
         this.gameRunning = true;
-        this.gameState = 'menu'; // menu, playing, paused, gameover, win
+        this.gameState = 'menu';
         this.health = new HealthSystem(100);
     }
 
@@ -60,6 +60,7 @@ class Game {
     }
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Game, HealthSystem };
-}
+// eslint-disable-next-line no-undef
+const gameExports = { Game, HealthSystem };
+/* eslint-disable-next-line no-undef */
+typeof module !== 'undefined' && module.exports && (module.exports = gameExports);
