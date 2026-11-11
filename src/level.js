@@ -1,39 +1,93 @@
+// Level System for Mario Game
+// Manages game levels, progression, and level data
+
 class Level {
-    constructor(levelId, canvas) {
-        this.levelId = levelId;
-        this.canvas = canvas;
+    constructor(data) {
+        this.id = data.id;
+        this.name = data.name;
+        this.width = data.width;
+        this.height = data.height;
+        this.tiles = data.tiles;
+        this.coins = data.coins || [];
+        this.enemies = data.enemies || [];
+        this.goal = data.goal;
         this.completed = false;
     }
 
-    next() {
-        return new Level(this.levelId + 1, this.canvas);
+    getTile(row, col) {
+        if (row < 0 || row >= this.tiles.length || col < 0 || col >= this.tiles[0].length) {
+            return 0;
+        }
+        return this.tiles[row][col];
     }
 
-    previous() {
-        return new Level(Math.max(1, this.levelId - 1), this.canvas);
+    setTile(row, col, value) {
+        if (row >= 0 && row < this.tiles.length && col >= 0 && col < this.tiles[0].length) {
+            this.tiles[row][col] = value;
+        }
+    }
+}
+
+class LevelManager {
+    constructor(levels) {
+        this.levels = levels.map(data => new Level(data));
+        this.currentLevelIndex = 0;
+        this.score = 0;
+        this.coinsCollected = 0;
     }
 
-    static selectByIndex(index) {
-        return new Level(index);
+    getCurrentLevel() {
+        return this.levels[this.currentLevelIndex];
     }
 
-    static getLevelCount() {
-        return 3;
+    getLevel(index) {
+        if (index >= 0 && index < this.levels.length) {
+            return this.levels[index];
+        }
+        return null;
     }
 
-    markCompleted() {
-        this.completed = true;
+    nextLevel() {
+        if (this.currentLevelIndex < this.levels.length - 1) {
+            this.currentLevelIndex++;
+            return true;
+        }
+        return false;
     }
 
-    isCompleted() {
-        return this.completed;
+    completeLevel(score) {
+        this.getCurrentLevel().completed = true;
+        this.score += score;
+        return this.nextLevel();
     }
 
-    isInProgress() {
-        return !this.completed;
+    collectCoin(amount = 10) {
+        this.score += amount;
+        this.coinsCollected++;
+    }
+
+    reset() {
+        this.currentLevelIndex = 0;
+        this.score = 0;
+        this.coinsCollected = 0;
+        this.levels.forEach(level => {
+            level.completed = false;
+        });
+    }
+
+    getTotalLevels() {
+        return this.levels.length;
+    }
+
+    getCurrentLevelIndex() {
+        return this.currentLevelIndex;
+    }
+
+    getScore() {
+        return this.score;
     }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Level };
+    module.exports = { Level, LevelManager };
 }
