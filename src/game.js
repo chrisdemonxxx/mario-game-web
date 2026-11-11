@@ -24,6 +24,7 @@ class Game {
     }
 }
 
+// Export for Jest (CommonJS) while staying usable as a plain <script> in the browser.
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { Game };
 }
