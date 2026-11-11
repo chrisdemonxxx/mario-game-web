@@ -1,14 +1,14 @@
-# Issue #7: Physics Engine & AABB Collision
+# Issue #7: Physics Engine & AABB Collision Detection
 
 ## Status: In Progress
 
-Implementing core physics:
+Core physics simulation:
 - Gravity simulation (0.6 px/frame²)
-- Terminal velocity (15 px/frame)
+- Terminal velocity cap (15 px/frame)
 - AABB collision detection
-- Collision resolution (4 directions)
-- Platform collision
-- Friction/momentum
-- Physics queries
+- Collision resolution (top, bottom, left, right)
+- Platform collision and grounding
+- Friction/momentum physics
+- Queryable physics queries
 
 See src/physics.js for implementation.
