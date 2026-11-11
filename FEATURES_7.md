@@ -2,13 +2,13 @@
 
 ## Status: In Progress
 
-Core physics simulation:
+Implementing core physics simulation:
 - Gravity simulation (0.6 px/frame²)
 - Terminal velocity cap (15 px/frame)
-- AABB collision detection
-- Collision resolution (top, bottom, left, right)
+- AABB (Axis-Aligned Bounding Box) collision detection
+- Collision resolution for all 4 directions (top, bottom, left, right)
 - Platform collision and grounding
 - Friction/momentum physics
-- Queryable physics queries
+- Physics queries for collision detection
 
 See src/physics.js for implementation.
