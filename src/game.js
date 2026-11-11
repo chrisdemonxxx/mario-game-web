@@ -9,20 +9,9 @@ class Game {
     start() {
         console.log('Game started');
     }
-
-    collectCoin() {
-        this.score += 10;
-    }
-
-    completeLevel() {
-        this.score += 500;
-    }
-
-    nextLevel() {
-        // Score persists
-    }
 }
 
+// Export for Jest (CommonJS) while staying usable as a plain <script> in the browser.
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { Game };
 }
