@@ -43,3 +43,64 @@ Lint errors are a hard fail. Coverage ≥ 60 % lines for new modules is the soft
 5. Create feature issues with acceptance criteria and `Depends on #N`.
 6. Confirm the Railway project exists and is linked to the default branch; otherwise open a `blocked` issue naming what is needed and message Chief.
 7. `message_bot` Builder with the issue list.
+
+## SHA-Bound Labels (Issue #28)
+
+Labels that reflect approval state (`qa-passed`, `qa-failed`, `approved`, `changes-requested`) are tied to a specific commit SHA. When the PR head changes (new commits or rebase), these labels become stale and must be removed before a new status can be set.
+
+### Label Lifecycle
+
+1. **Created:** A label is created when a bot posts its status comment with a SHA.
+   - QA creates `qa-passed` or `qa-failed` by commenting `QA: PASSED sha=<7>` or `QA: FAILED sha=<7>`
+   - Reviewer creates `approved` or `changes-requested` by commenting `REVIEW: APPROVED sha=<7>` or `REVIEW: CHANGES REQUESTED sha=<7>`
+
+2. **Stale:** When the PR head SHA differs from the label's SHA, the label is stale.
+   - Developer pushes new commits → head SHA changes → old labels no longer represent current state
+
+3. **Removed:** Before posting a new status comment, the bot must remove stale labels.
+   - QA removes both `qa-passed` and `qa-failed` (if present) before posting a new QA comment
+   - Reviewer removes both `approved` and `changes-requested` (if present) when head SHA has changed since the last REVIEW comment
+
+### Implementation Rules
+
+**QA Stage:**
+- Before posting a new QA comment (on any SHA), check and remove both `qa-passed` and `qa-failed` labels if present
+- Post `QA: PASSED sha=<7>` or `QA: FAILED sha=<7>` with the new SHA
+- Apply corresponding label
+
+**Reviewer Stage:**
+- Before posting a new REVIEW comment, extract the SHA from the most recent `REVIEW: APPROVED` comment (if one exists)
+- Compare it to the current PR head SHA
+- If they differ: remove both `approved` and `changes-requested` labels
+- Post `REVIEW: APPROVED sha=<7>` or `REVIEW: CHANGES REQUESTED sha=<7>` with current head SHA
+- Apply corresponding label
+
+**Shipper Stage:**
+- Before merging, extract the SHA from the most recent `REVIEW: APPROVED sha=<7>` comment
+- Compare it to the current PR head SHA
+- If they match: proceed with merge (PR is approved for current code)
+- If they differ: do not merge; notify Builder that the approval is stale and Reviewer re-approval is needed
+
+### Shared Utility Module
+
+`src/sha-bound-labels.js` provides reusable functions for SHA extraction, comparison, and label management:
+- `extractShaFromComment(commentBody, pattern)` - Extract SHA from bot comments
+- `compareShas(sha1, sha2)` - Compare SHAs (first 7 chars)
+- `findLatestCommentWithPattern(comments, pattern)` - Find most recent matching comment
+- `shouldRemoveLabelsForSha(currentHeadSha, comments, statusPattern)` - Determine if labels are stale
+- `getQaLabelsToRemove(currentLabels)` - Get QA labels to remove
+- `getReviewerLabelsToRemove(currentLabels)` - Get Reviewer labels to remove
+- `formatStatusComment(statusType, result, sha, details)` - Format bot comments with SHA
+
+### Example Scenario
+
+1. Developer opens PR on `abc1234`, QA passes → label `qa-passed`, comment `QA: PASSED sha=abc1234`
+2. Reviewer approves → label `approved`, comment `REVIEW: APPROVED sha=abc1234`
+3. Developer rebases on new main → PR head becomes `def5678`
+4. Shipper checks: `approved` label exists, but `def5678` ≠ `abc1234` → **refuses merge**, notifies Builder
+5. Builder rebases, pushes `def5678`, alerts QA
+6. QA removes `qa-passed` label, tests new SHA, posts `QA: PASSED sha=def5678`, re-applies label
+7. Reviewer removes `approved` label, re-checks, posts `REVIEW: APPROVED sha=def5678`, re-applies label
+8. Shipper now sees `approved` label + matching SHA → merges
+
+This prevents merging code that hasn't been tested or approved under its current state.
