@@ -13,7 +13,6 @@ class MockCanvas {
             drawImage: jest.fn(),
             fillText: jest.fn(),
             font: '',
-            fillStyle: '',
         };
     }
 }
