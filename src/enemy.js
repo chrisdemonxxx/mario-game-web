@@ -1,30 +1,36 @@
-const Physics = require('./physics');
-
+// Enemy class for Mario Game
 class Enemy {
   constructor(x, y, minX, maxX) {
     this.x = x;
     this.y = y;
     this.width = 32;
     this.height = 32;
-    this.minX = minX;
-    this.maxX = maxX;
-    this.dirX = 1;
+    this.minX = minX || x - 75;
+    this.maxX = maxX || x + 75;
     this.speed = 2;
-    this.frameIndex = 0;
+    this.direction = 1; // 1 for right, -1 for left
+    this.patrolDistance = 150;
   }
 
-  update() {
-    this.x += this.dirX * this.speed;
+  update(player) {
+    // Patrol movement
+    this.x += this.speed * this.direction;
 
+    // Check patrol boundaries
     if (this.x <= this.minX || this.x >= this.maxX) {
-      this.dirX *= -1;
+      this.direction *= -1;
     }
-
-    this.frameIndex++;
   }
 
-  checkCollision(player) {
-    return Physics.checkAABB(this, player);
+  checkCollision(rect) {
+    return this.x < rect.x + rect.width &&
+           this.x + this.width > rect.x &&
+           this.y < rect.y + rect.height &&
+           this.y + this.height > rect.y;
+  }
+
+  getBounds() {
+    return { x: this.x, y: this.y, width: this.width, height: this.height };
   }
 }
 
