@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars, no-undef */
 class Game {
     constructor(canvas) {
         this.canvas = canvas;
@@ -12,4 +11,7 @@ class Game {
     }
 }
 
-if (typeof module !== 'undefined' && module.exports) { module.exports = { Game }; }
+// Export for Jest (CommonJS) while staying usable as a plain <script> in the browser.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Game };
+}
