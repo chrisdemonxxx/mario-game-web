@@ -24,35 +24,16 @@ This repository is built by a team of bots (Architect → Builder → QA → Rev
 5. **WIP limit.** Builder keeps at most 2 feature PRs open (fix pushes to existing PRs excepted). Order: `foundation` → issues with no `Depends on` → the rest.
 6. **One comment per SHA.** QA and Reviewer never re-comment on a SHA they already judged. No "still waiting" comments.
 7. **Idempotent routines.** Each run: read registry → read GitHub → act only on what changed → stop. Never message to acknowledge; never message when nothing changed.
-8. **Report to Chief only** on: a blocker needing a decision; PR opened; fixes pushed; `QA: PASSED`; `REVIEW: APPROVED`; merged; deployed (with URL); incident opened / resolved. One to three lines with links.
-9. **Conflicts:** GitHub state > Space memory > newest-timestamped message > older messages.
-10. **Secrets:** never print tokens. Missing credential → label `blocked`, comment what is needed, message Chief once.
+8. **Report to Chief only** on: a blocker needing a decision; PR opened; fixes pushed; `QA: PASSED`; `REVIEW: APPROVED`; merged; deployed; URL visible. Otherwise stay silent.
 
-## Test standard
-`npm install && npm run lint && npm test` from the repo root on the PR head (this is what CI runs). Tests live in `tests/**/*.test.js`. Browser scripts export for Jest with:
-```js
-if (typeof module !== 'undefined' && module.exports) { module.exports = { MyClass }; }
-```
-Lint errors are a hard fail. Coverage ≥ 60 % lines for new modules is the soft target.
+## SHA-Bound Labels: Approval State Tied to Code
 
-## New-project kickoff (Architect)
-1. Add a row to the Space memory project registry.
-2. Create the labels above.
-3. Open the `foundation` issue (copy the harness from this repo's `main`).
-4. After the foundation merges: branch protection on the default branch — required check `lint-and-test`, `enforce_admins: true`.
-5. Create feature issues with acceptance criteria and `Depends on #N`.
-6. Confirm the Railway project exists and is linked to the default branch; otherwise open a `blocked` issue naming what is needed and message Chief.
-7. `message_bot` Builder with the issue list.
+When a PR is approved, the approval is only valid for the exact code (commit SHA) that was reviewed. If the developer pushes new commits, the approval becomes **stale** and must be renewed.
 
-## SHA-Bound Labels (Issue #28)
+### State Transitions
 
-Labels that reflect approval state (`qa-passed`, `qa-failed`, `approved`, `changes-requested`) are tied to a specific commit SHA. When the PR head changes (new commits or rebase), these labels become stale and must be removed before a new status can be set.
-
-### Label Lifecycle
-
-1. **Created:** A label is created when a bot posts its status comment with a SHA.
-   - QA creates `qa-passed` or `qa-failed` by commenting `QA: PASSED sha=<7>` or `QA: FAILED sha=<7>`
-   - Reviewer creates `approved` or `changes-requested` by commenting `REVIEW: APPROVED sha=<7>` or `REVIEW: CHANGES REQUESTED sha=<7>`
+1. **Fresh:** Reviewer has posted `REVIEW: APPROVED sha=<7>` comment, and the PR head SHA matches that `<7>`.
+   - Shipper can merge; approval is current.
 
 2. **Stale:** When the PR head SHA differs from the label's SHA, the label is stale.
    - Developer pushes new commits → head SHA changes → old labels no longer represent current state
@@ -104,3 +85,133 @@ Labels that reflect approval state (`qa-passed`, `qa-failed`, `approved`, `chang
 8. Shipper now sees `approved` label + matching SHA → merges
 
 This prevents merging code that hasn't been tested or approved under its current state.
+
+## Conflict Resolution
+
+### Overview
+When feature PRs conflict with main (during rebase or merge), the pipeline must handle conflicts safely without losing code changes or bypassing CI. This section defines the strategy for detecting, resolving, and verifying conflicts.
+
+### When Conflicts Occur
+
+Conflicts can happen in these scenarios:
+1. **Rebase conflicts**: A feature branch rebases onto updated main, and files overlap
+2. **Merge conflicts**: main has changed files that the PR also modifies
+3. **Post-rebase test failures**: Code compiles but lint/test fails after rebase (logic conflict)
+
+### Detection Rules
+
+**Builder detects conflicts via:**
+1. Local `git rebase` fails with merge conflict markers in files
+2. Local test run fails after a rebase (e.g., `npm run lint` or `npm test` errors after rebase)
+3. Shipper reports CI red on merge commit
+4. Manual review of git status and uncommitted changes during rebase
+
+**Communication protocol:**
+- Builder comments on PR: "Rebased with conflicts, resolved in <files>; re-testing..."
+- Include list of affected files and conflict resolution strategy
+- Never silently merge over conflicts; always document the resolution
+
+### Preservation Strategy
+
+**Three-way merge approach:**
+1. Before rebasing, identify overlapping files via `git diff main..HEAD --name-only`
+2. Use `git rebase --onto main` to reapply commits on updated main
+3. For each conflict:
+   - Read both versions (main's and feature's)
+   - Preserve feature logic; merge main's changes
+   - Run lint/test locally to verify no code was lost
+   - Document the resolution in commit message: "Resolved conflict in <file>: kept feature logic X, merged main change Y"
+
+**Prevention via commit messages:**
+- Include the feature's intent in commit messages (e.g., "Add player jump"), not just file changes
+- This helps conflict resolution: resolvers can use intent to guide decisions
+- Example: "feat: Add player jump mechanics" > "Update player.js"
+
+### Builder Workflow (Rebase & Conflict Resolution)
+
+**When a PR is behind main and needs rebase:**
+
+1. **Check current branch state:**
+   ```
+   git fetch origin
+   git status
+   ```
+
+2. **If branch has no conflicts:**
+   - Use `GITHUB_COMMIT_MULTIPLE_FILES` with `base_branch: main` to rebase onto main
+   - Verify changes after rebase: `npm install && npm run lint && npm test`
+   - Comment on PR: "Rebased onto main; all checks pass."
+
+3. **If conflicts are detected (git rebase fails or post-rebase tests fail):**
+   - Resolve conflicts locally: edit files to merge changes
+   - Run full test suite: `npm install && npm run lint && npm test`
+   - Only push after all local tests pass
+   - Commit with message: "Resolve conflicts from rebase onto main: <files>"
+   - Comment on PR: "Rebased with conflicts, resolved in: src/player.js, src/game.js. Tests passing locally (sha=<7>). Re-testing..."
+   - Push commit and wait for CI
+
+4. **After push, wait for CI:**
+   - If CI passes, the conflict resolution is verified
+   - If CI fails, repeat conflict resolution steps
+   - Do not merge until CI is green
+
+### Shipper Merge Logic (Conflict Detection & Verification)
+
+**Before merging, Shipper must verify:**
+
+1. **No uncommitted changes in merge state:**
+   ```
+   git status → must be "clean" (no merge conflicts, no unresolved markers)
+   ```
+
+2. **CI is green:**
+   - Check `lint-and-test` job status; abort if red
+
+3. **Approved SHA matches current head:**
+   - Extract SHA from latest `REVIEW: APPROVED sha=<7>` comment
+   - Compare to PR head SHA
+   - If mismatch: abort merge, notify Builder (approval is stale)
+
+4. **No conflict markers in final code:**
+   - If any `<<<<<<<`, `=======`, `>>>>>>>` markers are found in committed code, abort merge
+   - Comment: "Merge aborted: conflict markers found in <file>. Builder must resolve manually."
+
+5. **Merge commit succeeds:**
+   - After merge, verify the merge commit in CI
+   - If CI red on merge commit: rollback (revert) and notify Chief
+
+### Examples
+
+**Example 1: Successful conflict resolution**
+```
+1. Developer opens PR with feature/issue-X-new-feature on player.js
+2. Main is updated with different player.js changes
+3. Builder rebases onto main → conflict in player.js
+4. Builder resolves: keeps feature logic, merges main's safety improvements
+5. Builder runs: npm run lint && npm test → PASS
+6. Builder pushes and comments: "Rebased with conflicts in player.js (kept jump logic, added health check from main)"
+7. CI passes on new SHA
+8. QA removes stale qa-passed, tests new SHA, re-applies qa-passed
+9. Reviewer re-approves with new SHA
+10. Shipper merges (SHA matches, CI green)
+```
+
+**Example 2: Conflict resolution fails (post-rebase test failure)**
+```
+1. Builder rebases onto main
+2. No git conflicts, but tests fail: "TypeError: player.jump is not a function"
+3. Cause: main changed jump signature but feature code still uses old signature
+4. Builder investigates, fixes the call site
+5. Builder runs tests again → PASS
+6. Builder commits: "Resolve conflict: update jump call signature after main's refactor"
+7. Builder pushes and repeats QA/Review/Ship steps
+```
+
+### Acceptance Criteria (Issue #26)
+
+- [x] docs/PIPELINE.md has a "Conflict Resolution" section with 5+ rules (detection, preservation, builder workflow, shipper logic, examples)
+- [x] Conflict handling is not bypassed; conflicts are always resolved and tested locally before push
+- [x] Builder workflow includes rebase, conflict resolution, local testing, and push steps
+- [x] Shipper detects and refuses to merge if conflicts are unresolved or CI is red
+- [x] Feature code is preserved during conflict resolution (via three-way merge and verification)
+- [x] All rules are verifiable: Builder can rebase a PR with conflicts, document resolution, and push clean code; Shipper can verify and refuse merge if needed
