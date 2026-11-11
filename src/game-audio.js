@@ -1,27 +1,50 @@
-// Game Audio Controller - Manages game sound effects and music
-
-const { AudioManager } = require('./audio');
-
+// Game Audio Controller - High-level audio interface
 class GameAudioController {
+  static instance = null;
+
   constructor() {
-    this.audioManager = new AudioManager();
+    if (GameAudioController.instance) {
+      return GameAudioController.instance;
+    }
+    this.audioManager = require('./audio');
+    this.sounds = {};
+    GameAudioController.instance = this;
   }
 
-  playSoundEffect(effectName) {
-    this.audioManager.playSound(effectName);
+  static getInstance() {
+    if (!GameAudioController.instance) {
+      GameAudioController.instance = new GameAudioController();
+    }
+    return GameAudioController.instance;
   }
 
   setVolume(level) {
-    this.audioManager.setVolume(level);
-  }
-
-  toggleMute() {
-    this.audioManager.toggleMute();
+    if (this.audioManager && this.audioManager.setVolume) {
+      this.audioManager.setVolume(level);
+    }
   }
 
   getVolume() {
-    return this.audioManager.getVolume();
+    if (this.audioManager && this.audioManager.getVolume) {
+      return this.audioManager.getVolume();
+    }
+    return 0.7;
+  }
+
+  playSound(soundName) {
+    if (this.audioManager && this.audioManager.playSound) {
+      return this.audioManager.playSound(soundName);
+    }
+    return null;
+  }
+
+  mute() {
+    if (this.audioManager && this.audioManager.toggle) {
+      this.audioManager.toggle();
+    }
   }
 }
 
-module.exports = GameAudioController;
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = GameAudioController;
+}
