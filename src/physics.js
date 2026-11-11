@@ -1,3 +1,4 @@
+/* global module */
 /**
  * Physics Engine Module
  * Implements AABB collision detection and gravity simulation
