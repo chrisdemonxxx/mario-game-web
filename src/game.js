@@ -10,3 +10,7 @@ class Game {
         console.log('Game started');
     }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { Game };
+}
