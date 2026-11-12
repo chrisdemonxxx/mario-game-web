@@ -1,11 +1,11 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    root: './tests',
-    include: ['**/*.e2e.test.js'],
-    testTimeout: 30000,
-  },
+    test: {
+        globals: true,
+        environment: 'node',
+        include: ['tests/e2e-*.test.js'],
+        timeout: 30000,
+        testTimeout: 30000,
+    },
 });
