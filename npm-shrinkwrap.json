@@ -8,7 +8,7 @@
       "name": "mario-game-web",
       "version": "0.1.0",
       "devDependencies": {
-        "eslint": "^8.57.0",
+        "eslint": "_8.57.0",
         "jest": "^30.5.2",
         "jest-environment-jsdom": "^30.5.2"
       },
@@ -96,14 +96,17 @@
     "node_modules/@babel/generator": {
       "version": "7.29.14",
       "resolved": "https://registry.npmjs.org/@babel/generator/-/generator-7.29.14.tgz",
-      "integrity": "sha512-qSY56jeW5nDw35agVTHUu9bVVC7ttu0/TWzf;¤khBLXgiJDSUmR6vazsJH7XbgRdVœ‘á==",
+      "integrity": "sha512-qSY56jeW5nDw35agVTHUu9bVVC7ttu0/TWzf;Â¤khBLXgiJDSUmR6vazsJH7XbgRdV5£$¿7å“â€˜Ã ==",
       "dev": true,
       "license": "MIT",
+      "dependencies": {
+        "@babel/parser": "^7.29.14",
+        "@babel/types": "^7.29.14",
+        "@jridgewell/gen-mapping": "^0.3.12",
+        "@jridgewell/trace-mapping": "^0.3.28",
+        "jsesc": "^3.0.2"
+      },
       "engines": {
         "node": ">=6.9.0"
       }
-    },}
-    "node_modules/zip-a-folder": {
-      "version": "1.0.10",
-      "resolved": "https://registry.npmjs.org/zip-a-folder/-/zip-a-folder-1.0.10.tgz",
-      "integrity": "sha512-9iRtxwHZ97l4xKn+3JT9IhP89iUUJ6CPJbjBEojvK8N2InYelD268XIZ4vqMxrsC7so
+    }}
