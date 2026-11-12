@@ -22,5 +22,8 @@
     "jest-environment-jsdom": "^29.7.0",
     "puppeteer": "^25.17.0",
     "vitest": "^5.1.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.17.0": true
   }
 }
