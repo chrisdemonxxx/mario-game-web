@@ -10,9 +10,10 @@ permissions:
   contents: read
   checks: write
   statuses: write
+  pull-requests: read
 
 jobs:
-  test:
+  lint-and-test:
     name: lint-and-test
     runs-on: ubuntu-latest
     steps:
@@ -20,9 +21,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund
+      # Use npm ci for reproducible installs with shrinkwrap
+      - run: npm ci --no-fund
       - run: npm run lint
+      # Fail if no tests are discovered
+      - run: npm test -- --listTests | grep -q '\.test\.js$' || (echo "ERROR: No test files discovered" && exit 1)
       - run: npm test
+      - run: npm run audit
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -30,3 +35,31 @@ jobs:
           name: coverage
           path: coverage/
           if-no-files-found: ignore
+
+  qa-gate:
+    name: QA Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate SHA binding
+        run: |
+          PR_HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          COMMIT_SHA="$(git rev-parse HEAD)"
+          echo "PR Head SHA: $PR_HEAD_SHA"
+          echo "Commit SHA: $COMMIT_SHA"
+          if [ "$PR_HEAD_SHA" != "$COMMIT_SHA" ]; then
+            echo "ERROR: HEAD SHA mismatch (TOCTOU race detected)"
+            exit 1
+          fi
+          echo "SHA verification passed"
+      - name: Check QA status
+        run: |
+          # This is a placeholder for the full gate implementation
+          # In the full implementation, this would:
+          # 1. Check for QA: PASSED comment on the PR
+          # 2. Verify the SHA in that comment matches current HEAD
+          # 3. Check for REVIEW: APPROVED label/comment
+          # 4. Block merge if any attestation is missing, stale, or contradictory
+          echo "QA Gate check: ready for full implementation"
