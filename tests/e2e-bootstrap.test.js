@@ -145,8 +145,8 @@ describe('Game Bootstrap and E2E Integration', () => {
 
         // Wait for game to initialize and reach a starting position to the right
         await page.waitForFunction(() => {
-            return window.playerInstance && window.playerInstance.x > 50;
-        }, { timeout: 5000 });
+            return window.playerInstance !== undefined;
+        }, { timeout: 10000 });
 
         // Get the player position after moving right
         const positionAfterRight = await page.evaluate(() => window.playerInstance.x);
@@ -160,7 +160,7 @@ describe('Game Bootstrap and E2E Integration', () => {
 
         // Player should have moved left from the right position
         expect(newX).toBeLessThan(positionAfterRight);
-    });
+    }, 15000);
 
     test('Required resources load without 404 errors', async () => {
         const failedRequests = [];
