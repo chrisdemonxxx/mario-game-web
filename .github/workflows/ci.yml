@@ -12,14 +12,14 @@ permissions:
   statuses: write
 
 jobs:
-  lint-and-test:
+  test:
     name: lint-and-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - run: npm ci --no-fund
       - run: npm run lint
       - run: npm test
