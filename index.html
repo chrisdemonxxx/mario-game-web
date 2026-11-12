@@ -11,6 +11,20 @@
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <!-- Load game modules in dependency order -->
+    <script src="src/physics.js"></script>
+    <script src="src/spriteManager.js"></script>
+    <script src="src/spriteAssets.js"></script>
+    <script src="src/level.js"></script>
+    <script src="src/player.js"></script>
+    <script src="src/enemy.js"></script>
+    <script src="src/audio.js"></script>
+    <script src="src/game-audio.js"></script>
+    <script src="src/sha-bound-labels.js"></script>
+    <script src="src/queue-health.js"></script>
+    <script src="src/placeholder-graphics.js"></script>
     <script src="src/game.js"></script>
+    <!-- Bootstrap the game and start the rendering loop -->
+    <script src="src/bootstrap.js"></script>
 </body>
 </html>

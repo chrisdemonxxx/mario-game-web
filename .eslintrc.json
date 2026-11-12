@@ -10,7 +10,12 @@
   },
   "overrides": [
     {
-      "files": ["tests/**/*.js", "**/*.test.js", "jest.setup.js"],
+      "files": ["tests/e2e-*.test.js"],
+      "parserOptions": { "ecmaVersion": 2021, "sourceType": "module" },
+      "env": { "node": true }
+    },
+    {
+      "files": ["tests/**/*.test.js", "jest.setup.js"],
       "env": { "jest": true, "node": true }
     }
   ]
