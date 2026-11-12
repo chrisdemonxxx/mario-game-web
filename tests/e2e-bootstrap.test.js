@@ -152,13 +152,13 @@ describe('Game Bootstrap and E2E Integration', () => {
         // Get initial player position
         const initialX = await page.evaluate(() => window.playerInstance.x);
 
-        // Simulate arrow right key press
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
+        // Simulate arrow right key press using down/up pattern for more reliable input
+        await page.keyboard.down('ArrowRight');
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 50)));
+        await page.keyboard.up('ArrowRight');
 
-        // Wait a bit for the player to move
-        await page.waitForTimeout(100);
+        // Wait a bit for the player to move and render
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
 
         // Get new player position
         const newX = await page.evaluate(() => window.playerInstance.x);
@@ -178,17 +178,18 @@ describe('Game Bootstrap and E2E Integration', () => {
         }, { timeout: 5000 });
 
         // Move player to the right first
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
-        await page.waitForTimeout(100);
+        await page.keyboard.down('ArrowRight');
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 50)));
+        await page.keyboard.up('ArrowRight');
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
 
         const positionAfterRight = await page.evaluate(() => window.playerInstance.x);
 
         // Now move left
-        await page.keyboard.press('ArrowLeft');
-        await page.keyboard.press('ArrowLeft');
-        await page.waitForTimeout(100);
+        await page.keyboard.down('ArrowLeft');
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 50)));
+        await page.keyboard.up('ArrowLeft');
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
 
         // Get new player position
         const newX = await page.evaluate(() => window.playerInstance.x);
@@ -249,7 +250,7 @@ describe('Game Bootstrap and E2E Integration', () => {
         }, { timeout: 5000 });
 
         // Let the game run for a moment
-        await page.waitForTimeout(1000);
+        await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
 
         // No uncaught errors should have been reported
         expect(uncaughtErrors).toEqual([]);
