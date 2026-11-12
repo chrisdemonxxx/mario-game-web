@@ -2,11 +2,11 @@
  * Game Bootstrap - Initializes and runs the game
  * This file is loaded after all game modules to wire everything together
  */
+/* global Game, Player, LevelManager */
 
 // Global game instance
 let gameInstance = null;
 let playerInstance = null;
-let levelManager = null;
 let lastFrameTime = Date.now();
 let animationId = null;
 
@@ -34,7 +34,8 @@ async function initGame() {
         playerInstance = new Player(50, 300, null);
 
         // Create Level instances for level manager
-        levelManager = new LevelManager(levels);
+        // eslint-disable-next-line no-unused-vars
+        const levelManager = new LevelManager(levels);
 
         // Set up keyboard input handlers
         setupKeyboardInput();
