@@ -1,12 +1,12 @@
 /**
  * Game Bootstrap - Initializes and runs the game
  * This file is loaded after all game modules to wire everything together
+ * All game modules are loaded via <script> tags in index.html, so they're available globally
  */
-/* global Game, Player, LevelManager */
 
-// Global game instance
-let gameInstance = null;
-let playerInstance = null;
+// Global game instances (assigned to window for testing and external access)
+window.gameInstance = null;
+window.playerInstance = null;
 let lastFrameTime = Date.now();
 let animationId = null;
 
@@ -21,27 +21,17 @@ async function initGame() {
             throw new Error('Canvas element with id "gameCanvas" not found');
         }
 
-        // Load levels from JSON
-        const levelsResponse = await fetch('assets/data/levels.json');
-        if (!levelsResponse.ok) {
-            throw new Error(`Failed to load levels: ${levelsResponse.status} ${levelsResponse.statusText}`);
-        }
-        const levelsData = await levelsResponse.json();
-        const levels = levelsData.levels;
-
-        // Initialize game, player, and level manager
-        gameInstance = new Game(canvas);
-        playerInstance = new Player(50, 300, null);
-
-        // Create Level instances for level manager
-        // eslint-disable-next-line no-unused-vars
-        const levelManager = new LevelManager(levels);
+        // Initialize game and player
+        // eslint-disable-next-line no-undef
+        window.gameInstance = new Game(canvas);
+        // eslint-disable-next-line no-undef
+        window.playerInstance = new Player(50, 300, null);
 
         // Set up keyboard input handlers
         setupKeyboardInput();
 
         // Start the game
-        gameInstance.start();
+        window.gameInstance.start();
 
         // Start the rendering loop
         startRenderingLoop();
@@ -71,14 +61,14 @@ function setupKeyboardInput() {
 
         // Handle specific keys
         if (e.key.toLowerCase() === 'arrowleft' || e.key.toLowerCase() === 'a') {
-            playerInstance.setInput('left', true);
-            playerInstance.moveLeft();
+            window.playerInstance.setInput('left', true);
+            window.playerInstance.moveLeft();
         } else if (e.key.toLowerCase() === 'arrowright' || e.key.toLowerCase() === 'd') {
-            playerInstance.setInput('right', true);
-            playerInstance.moveRight();
+            window.playerInstance.setInput('right', true);
+            window.playerInstance.moveRight();
         } else if (e.key.toLowerCase() === ' ' || e.key.toLowerCase() === 'arrowup' || e.key.toLowerCase() === 'w') {
             e.preventDefault();
-            playerInstance.jump();
+            window.playerInstance.jump();
         }
     });
 
@@ -87,11 +77,11 @@ function setupKeyboardInput() {
 
         // Handle specific keys
         if (e.key.toLowerCase() === 'arrowleft' || e.key.toLowerCase() === 'a') {
-            playerInstance.setInput('left', false);
-            playerInstance.velocityX = 0;
+            window.playerInstance.setInput('left', false);
+            window.playerInstance.velocityX = 0;
         } else if (e.key.toLowerCase() === 'arrowright' || e.key.toLowerCase() === 'd') {
-            playerInstance.setInput('right', false);
-            playerInstance.velocityX = 0;
+            window.playerInstance.setInput('right', false);
+            window.playerInstance.velocityX = 0;
         }
     });
 }
@@ -113,45 +103,45 @@ function startRenderingLoop() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Update game state
-        if (gameInstance.gameRunning) {
-            gameInstance.updateGameTime(deltaTime * 1000); // Convert back to ms
-            playerInstance.update(deltaTime);
+        if (window.gameInstance.gameRunning) {
+            window.gameInstance.updateGameTime(deltaTime * 1000); // Convert back to ms
+            window.playerInstance.update(deltaTime);
 
             // Simple gravity simulation if physics module isn't directly integrated
-            if (playerInstance.y + playerInstance.height < canvas.height - 100) {
-                playerInstance.velocityY += 600 * deltaTime; // Apply gravity
+            if (window.playerInstance.y + window.playerInstance.height < canvas.height - 100) {
+                window.playerInstance.velocityY += 600 * deltaTime; // Apply gravity
             } else {
                 // Player is on ground
-                playerInstance.setGrounded(true);
-                playerInstance.y = canvas.height - 100 - playerInstance.height;
-                playerInstance.velocityY = 0;
+                window.playerInstance.setGrounded(true);
+                window.playerInstance.y = canvas.height - 100 - window.playerInstance.height;
+                window.playerInstance.velocityY = 0;
             }
 
             // Apply velocity
-            playerInstance.x += playerInstance.velocityX;
-            playerInstance.y += playerInstance.velocityY;
+            window.playerInstance.x += window.playerInstance.velocityX;
+            window.playerInstance.y += window.playerInstance.velocityY;
 
             // Boundary checks
-            if (playerInstance.x < 0) playerInstance.x = 0;
-            if (playerInstance.x + playerInstance.width > canvas.width) {
-                playerInstance.x = canvas.width - playerInstance.width;
+            if (window.playerInstance.x < 0) window.playerInstance.x = 0;
+            if (window.playerInstance.x + window.playerInstance.width > canvas.width) {
+                window.playerInstance.x = canvas.width - window.playerInstance.width;
             }
-            if (playerInstance.y > canvas.height) {
+            if (window.playerInstance.y > canvas.height) {
                 // Player fell off screen - game over
-                gameInstance.endGame('Fell off the map');
+                window.gameInstance.endGame('Fell off the map');
             }
         }
 
         // Render player
         ctx.fillStyle = '#FF0000';
-        ctx.fillRect(playerInstance.x, playerInstance.y, playerInstance.width, playerInstance.height);
+        ctx.fillRect(window.playerInstance.x, window.playerInstance.y, window.playerInstance.width, window.playerInstance.height);
 
         // Render simple ground
         ctx.fillStyle = '#8B4513';
         ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
         // Render HUD
-        gameInstance.renderHUD();
+        window.gameInstance.renderHUD();
 
         // Continue animation loop
         animationId = requestAnimationFrame(render);
@@ -178,5 +168,5 @@ if (document.readyState === 'loading') {
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { initGame, stopRenderingLoop, getGameInstance: () => gameInstance };
+    module.exports = { initGame, stopRenderingLoop, getGameInstance: () => window.gameInstance };
 }

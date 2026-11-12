@@ -19,6 +19,6 @@
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "puppeteer": "^25.17.0"
+    "puppeteer": "^24.0.0"
   }
 }
